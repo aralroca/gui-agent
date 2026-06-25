@@ -1,0 +1,95 @@
+{
+  "name": "@aralroca/gui-agent",
+  "version": "0.1.0",
+  "description": "An open-source WebMCP-powered in-page GUI agent. Let a natural-language agent live inside your web app and drive its UI — no script injection, no browser extension, no headless browser.",
+  "keywords": [
+    "webmcp",
+    "mcp",
+    "agent",
+    "gui-agent",
+    "ai",
+    "llm",
+    "browser",
+    "automation",
+    "model-context",
+    "page-agent"
+  ],
+  "license": "MIT",
+  "author": "Aral Roca",
+  "homepage": "https://github.com/aralroca/gui-agent#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aralroca/gui-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aralroca/gui-agent/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.js"
+    },
+    "./ai-sdk": {
+      "types": "./dist/ai-sdk/index.d.ts",
+      "import": "./dist/ai-sdk/index.js"
+    },
+    "./polyfill": {
+      "types": "./dist/polyfill.d.ts",
+      "import": "./dist/polyfill.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "demo": "vite",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@mcp-b/webmcp-polyfill": "^3.0.0"
+  },
+  "peerDependencies": {
+    "ai": ">=5",
+    "react": ">=18",
+    "zod": ">=3.23"
+  },
+  "peerDependenciesMeta": {
+    "ai": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "zod": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "ai": "^6.0.0",
+    "jsdom": "^25.0.0",
+    "react": "^19.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0",
+    "vitest": "^2.1.0",
+    "zod": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
