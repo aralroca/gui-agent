@@ -1,14 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GuiAgent } from "../src/agent.js";
 import { ToolRegistry } from "../src/registry.js";
-import type { Llm, LlmResponse } from "../src/types.js";
-
-/** A deterministic LLM that replays a fixed script of responses. */
-function scriptedLlm(script: LlmResponse[]): { llm: Llm } {
-  let i = 0;
-  const llm: Llm = async () => script[i++] ?? { text: "(no more script)" };
-  return { llm };
-}
+import { scriptedLlm } from "./helpers.js";
 
 describe("GuiAgent", () => {
   beforeEach(() => {

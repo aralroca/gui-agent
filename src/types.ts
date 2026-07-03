@@ -7,6 +7,8 @@
  * built-in agent loop — or by any other WebMCP agent.
  */
 
+import type { DomToolsOptions } from "./dom/tools.js";
+
 /** A JSON Schema object describing a tool's input. */
 export type JSONSchema = Record<string, unknown>;
 
@@ -125,11 +127,25 @@ export type Llm = (request: LlmRequest) => Promise<LlmResponse>;
  */
 export type Confirm = (call: ToolCall, tool: RegisteredTool | undefined) => boolean | Promise<boolean>;
 
+/**
+ * Fired by the DOM fallback tools with the resolved live element, just before
+ * acting on it. The agent loop re-emits it as a `tool-target` step; UIs (e.g.
+ * the `/ui` visualizer) use it to highlight the target.
+ */
+export interface DomTargetEvent {
+  action: "click" | "fill" | "select_option";
+  ref: string;
+  element: HTMLElement;
+  /** Accessible name of the element (may be empty). */
+  name: string;
+}
+
 /** Events emitted as the agent loop runs, for UI/telemetry. */
 export type AgentStep =
   | { type: "llm-request"; messages: AgentMessage[]; tools: ToolSpec[] }
   | { type: "llm-response"; response: LlmResponse }
   | { type: "tool-call"; call: ToolCall }
+  | { type: "tool-target"; call: ToolCall; target: DomTargetEvent }
   | { type: "tool-denied"; call: ToolCall }
   | { type: "tool-result"; call: ToolCall; result: ToolResultEnvelope }
   | { type: "done"; text: string };
@@ -147,6 +163,8 @@ export interface GuiAgentOptions {
   confirm?: Confirm;
   /** Observe each step of the loop. */
   onStep?: (step: AgentStep) => void;
+  /** Options forwarded to the per-run DOM fallback tools (root, maxNodes, onTarget…). */
+  domTools?: DomToolsOptions;
 }
 
 export interface RunResult {

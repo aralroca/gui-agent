@@ -134,7 +134,7 @@ function roleOf(el: Element): string {
   return "control";
 }
 
-function accessibleName(el: Element): string {
+export function accessibleName(el: Element): string {
   const ariaLabel = el.getAttribute("aria-label");
   if (ariaLabel) return ariaLabel.trim();
 

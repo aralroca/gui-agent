@@ -11,7 +11,7 @@ export { defineTool, registry, ToolRegistry } from "./registry.js";
 export type { Dispose, RegisterOptions } from "./registry.js";
 export { discoverExternalTools } from "./discover.js";
 export { ensureModelContext, hasModelContext, initializeWebMCPPolyfill } from "./polyfill.js";
-export { DomSnapshotter } from "./dom/snapshot.js";
+export { accessibleName, DomSnapshotter } from "./dom/snapshot.js";
 export { createDomTools } from "./dom/tools.js";
 export type { DomToolsOptions } from "./dom/tools.js";
 export { normalizeResult, errorResult, envelopeToText } from "./result.js";
@@ -21,6 +21,7 @@ export type {
   AgentMessage,
   AgentStep,
   Confirm,
+  DomTargetEvent,
   GuiAgentOptions,
   InputSchema,
   JSONSchema,

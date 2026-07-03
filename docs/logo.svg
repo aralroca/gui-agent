@@ -1,0 +1,31 @@
+<svg width="512" height="512" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="glow" x1="48" y1="100" x2="208" y2="172" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7c8cf8"/>
+      <stop offset="0.5" stop-color="#f0a6c8"/>
+      <stop offset="1" stop-color="#7ee0c3"/>
+    </linearGradient>
+    <filter id="soften" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
+  </defs>
+
+  <!-- app window -->
+  <rect x="22" y="34" width="212" height="188" rx="22" stroke="#94a3b8" stroke-width="9"/>
+  <line x1="22" y1="74" x2="234" y2="74" stroke="#94a3b8" stroke-width="7"/>
+  <circle cx="46" cy="54" r="5.5" fill="#94a3b8"/>
+  <circle cx="66" cy="54" r="5.5" fill="#94a3b8"/>
+  <circle cx="86" cy="54" r="5.5" fill="#94a3b8"/>
+
+  <!-- glow ring around the button the agent is acting on -->
+  <rect x="55" y="105" width="146" height="62" rx="20" stroke="url(#glow)" stroke-width="13" opacity="0.75" filter="url(#soften)"/>
+  <rect x="55" y="105" width="146" height="62" rx="20" stroke="url(#glow)" stroke-width="7"/>
+
+  <!-- the button -->
+  <rect x="68" y="117" width="120" height="38" rx="12" fill="#2563eb"/>
+  <rect x="84" y="132" width="88" height="8" rx="4" fill="#ffffff" opacity="0.92"/>
+
+  <!-- cursor -->
+  <path d="M148 138 L188 178 L166 180 L176 202 L164 207 L154 184 L140 198 Z"
+        fill="#18181b" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>
+</svg>

@@ -45,6 +45,10 @@
     "./polyfill": {
       "types": "./dist/polyfill.d.ts",
       "import": "./dist/polyfill.js"
+    },
+    "./ui": {
+      "types": "./dist/ui/index.d.ts",
+      "import": "./dist/ui/index.js"
     }
   },
   "main": "./dist/index.js",

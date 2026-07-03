@@ -24,13 +24,13 @@
       button.primary { background: var(--accent); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; cursor: pointer; font: inherit; margin-top: 16px; }
       .field { max-width: 320px; }
       .toast { margin-top: 16px; padding: 10px 12px; background: #ecfdf5; color: #065f46; border-radius: 8px; display: none; }
-      aside { border-left: 1px solid var(--bd); display: flex; flex-direction: column; }
+      aside { border-left: 1px solid var(--bd); display: flex; flex-direction: column; overflow: hidden; }
       aside header { padding: 14px 16px; border-bottom: 1px solid var(--bd); font-weight: 600; }
-      #log { flex: 1; overflow: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+      #log { flex: 1; min-height: 0; overflow: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
       .msg { padding: 8px 10px; border-radius: 10px; max-width: 90%; white-space: pre-wrap; }
       .msg.user { background: var(--accent); color: #fff; align-self: flex-end; }
       .msg.agent { background: rgba(127,127,127,.14); align-self: flex-start; }
-      .msg.step { color: var(--mut); font-size: 12px; align-self: flex-start; font-family: ui-monospace, monospace; }
+      #agent-steps { padding: 0 16px 8px; }
       form.ask { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--bd); }
       form.ask input { flex: 1; }
     </style>
@@ -72,9 +72,10 @@
       </section>
     </main>
 
-    <aside>
+    <aside id="assistant-panel">
       <header>🤖 Assistant</header>
       <div id="log"></div>
+      <div id="agent-steps"></div>
       <form class="ask" id="ask">
         <input id="goal" placeholder='e.g. "invite jane@acme.com as admin"' autocomplete="off" />
         <button class="primary" style="margin:0">Run</button>

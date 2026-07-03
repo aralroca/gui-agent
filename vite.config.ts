@@ -7,6 +7,7 @@ export default defineConfig({
   root: "demo",
   resolve: {
     alias: {
+      "@aralroca/gui-agent/ui": resolve(__dirname, "src/ui/index.ts"),
       "@aralroca/gui-agent/react": resolve(__dirname, "src/react/index.ts"),
       "@aralroca/gui-agent/ai-sdk": resolve(__dirname, "src/ai-sdk/index.ts"),
       "@aralroca/gui-agent": resolve(__dirname, "src/index.ts"),

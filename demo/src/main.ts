@@ -12,7 +12,8 @@
  * `createRemoteLlm({ api: '/api/chat' })` from `@aralroca/gui-agent/ai-sdk`.
  */
 import { defineTool, GuiAgent } from "@aralroca/gui-agent";
-import type { AgentStep, Llm } from "@aralroca/gui-agent";
+import type { Llm } from "@aralroca/gui-agent";
+import { createAgentVisualizer } from "@aralroca/gui-agent/ui";
 
 // ---- mini console behavior ---------------------------------------------------
 
@@ -73,6 +74,9 @@ defineTool({
   annotations: { readOnlyHint: true },
   execute: ({ query }) => {
     selectTab("users");
+    const search = document.getElementById("user-search") as HTMLInputElement;
+    search.value = String(query);
+    viz.highlight(search);
     renderUsers(String(query));
     const matches = USERS.filter((u) => u.name.toLowerCase().includes(String(query).toLowerCase()));
     return `Found ${matches.length} user(s): ${matches.map((m) => m.name).join(", ") || "none"}.`;
@@ -89,9 +93,19 @@ defineTool({
   },
   execute: ({ email, role }) => {
     selectTab("team");
-    (document.getElementById("invite-email") as HTMLInputElement).value = String(email);
-    if (role) (document.getElementById("invite-role") as HTMLSelectElement).value = String(role);
-    document.getElementById("invite-send")!.click();
+    // Producer tools opt into the glow by highlighting what they touch; the
+    // visualizer queues these so the ring tours email → role → send button.
+    const emailInput = document.getElementById("invite-email") as HTMLInputElement;
+    emailInput.value = String(email);
+    viz.highlight(emailInput);
+    if (role) {
+      const roleSelect = document.getElementById("invite-role") as HTMLSelectElement;
+      roleSelect.value = String(role);
+      viz.highlight(roleSelect);
+    }
+    const send = document.getElementById("invite-send")!;
+    viz.highlight(send);
+    send.click();
     return `Invitation sent to ${email}${role ? ` as ${role}` : ""}.`;
   },
 });
@@ -99,6 +113,9 @@ defineTool({
 // ---- the offline demo planner (stand-in for a real LLM) ----------------------
 
 const demoLlm: Llm = async ({ messages }) => {
+  // A real model takes a moment to think; simulate it so the visualizer's
+  // "Thinking…" and spinner states are visible.
+  await new Promise((resolve) => setTimeout(resolve, 350));
   const goal = (messages.find((m) => m.role === "user")?.content ?? "").split("\n")[0]!;
   const step = messages.filter((m) => m.role === "assistant" && m.toolCalls?.length).length;
   const plan = planFor(goal);
@@ -137,7 +154,7 @@ function planFor(goal: string): { name: string; arguments: Record<string, unknow
 // ---- wire the chat UI to the agent ------------------------------------------
 
 const log = document.getElementById("log")!;
-function add(kind: "user" | "agent" | "step", text: string) {
+function add(kind: "user" | "agent", text: string) {
   const el = document.createElement("div");
   el.className = `msg ${kind}`;
   el.textContent = text;
@@ -145,10 +162,13 @@ function add(kind: "user" | "agent" | "step", text: string) {
   log.scrollTop = log.scrollHeight;
 }
 
-const onStep = (s: AgentStep) => {
-  if (s.type === "tool-call") add("step", `→ ${s.call.name}(${JSON.stringify(s.call.arguments)})`);
-  if (s.type === "tool-denied") add("step", `✋ denied: ${s.call.name}`);
-};
+// The interaction visualizer: status chips above the input + a gradient glow
+// around whichever element the agent acts on, while the rest of the page (bar
+// the chat panel) blurs behind it. Enabled by default.
+const viz = createAgentVisualizer({
+  container: document.getElementById("agent-steps")!,
+  backdrop: { exclude: ["assistant-panel"] },
+});
 
 // `demoLlm` emits a placeholder ref for the DOM-fallback rename; resolve it from
 // the live snapshot just before the call so the demo "just works".
@@ -166,15 +186,13 @@ const llm: Llm = async (req) => {
   return res;
 };
 
-const agent = new GuiAgent({
-  llm,
-  onStep,
-  // Gate non-read-only tools — here we auto-approve, but this is the HITL seam.
-  confirm: async (call) => {
-    add("step", `✓ approved: ${call.name}`);
-    return true;
-  },
-});
+const agent = new GuiAgent(
+  viz.bind({
+    llm,
+    // Gate non-read-only tools — here we auto-approve, but this is the HITL seam.
+    confirm: async () => true,
+  }),
+);
 
 document.getElementById("ask")!.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -183,6 +201,7 @@ document.getElementById("ask")!.addEventListener("submit", async (e) => {
   if (!goal) return;
   input.value = "";
   add("user", goal);
+  viz.clear();
   const result = await agent.run(goal);
   add("agent", result.text);
 });

@@ -6,8 +6,8 @@
  * read the text snapshot, then click / fill / select elements by their stable
  * ref. Every mutating tool returns a fresh snapshot so the model stays oriented.
  */
-import { DomSnapshotter } from "./snapshot.js";
-import type { ToolDefinition } from "../types.js";
+import { accessibleName, DomSnapshotter } from "./snapshot.js";
+import type { DomTargetEvent, ToolDefinition } from "../types.js";
 
 export interface DomToolsOptions {
   /** Root to operate within. Defaults to `document.body`. */
@@ -16,6 +16,8 @@ export interface DomToolsOptions {
   maxNodes?: number;
   /** Allow full-page `navigate`. Off by default (it would unload the agent). */
   allowNavigation?: boolean;
+  /** Observe the resolved live element right before click/fill/select act on it. */
+  onTarget?: (event: DomTargetEvent) => void;
 }
 
 const refSchema = {
@@ -48,6 +50,15 @@ export function createDomTools(
 
   const withSnapshot = (message: string) => `${message}\n\nPage now:\n${snapshot()}`;
 
+  const notifyTarget = (action: DomTargetEvent["action"], ref: string, element: HTMLElement) => {
+    if (!options.onTarget) return;
+    try {
+      options.onTarget({ action, ref, element, name: accessibleName(element) });
+    } catch {
+      // Observers must never break the tool itself.
+    }
+  };
+
   const tools: ToolDefinition[] = [
     {
       name: "read_page",
@@ -62,6 +73,7 @@ export function createDomTools(
       inputSchema: refSchema,
       execute: ({ ref }) => {
         const el = resolve(ref as string);
+        notifyTarget("click", ref as string, el);
         el.click();
         return withSnapshot(`Clicked ${ref}.`);
       },
@@ -79,6 +91,7 @@ export function createDomTools(
       },
       execute: ({ ref, value }) => {
         const el = resolve(ref as string);
+        notifyTarget("fill", ref as string, el);
         fillElement(el, String(value ?? ""));
         return withSnapshot(`Filled ${ref}.`);
       },
@@ -96,6 +109,7 @@ export function createDomTools(
       },
       execute: ({ ref, value }) => {
         const el = resolve(ref as string);
+        notifyTarget("select_option", ref as string, el);
         selectOption(el, String(value ?? ""));
         return withSnapshot(`Selected "${value}" in ${ref}.`);
       },

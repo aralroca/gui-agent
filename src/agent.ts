@@ -13,6 +13,7 @@ import { registry as defaultRegistry, ToolRegistry } from "./registry.js";
 import { envelopeToText } from "./result.js";
 import type {
   AgentMessage,
+  DomTargetEvent,
   GuiAgentOptions,
   RegisteredTool,
   RunResult,
@@ -49,8 +50,18 @@ export class GuiAgent {
     // Per-run DOM tools, auto-disposed when the run ends.
     const domAbort = new AbortController();
     const snapshotter = new DomSnapshotter();
+    // Tracks the tool call being executed so DOM target events can be
+    // re-emitted on the step stream with their originating call attached.
+    const active: { call: ToolCall | null } = { call: null };
     if (domFallback) {
-      for (const tool of createDomTools(snapshotter)) {
+      const domTools = {
+        ...this.options.domTools,
+        onTarget: (event: DomTargetEvent) => {
+          this.options.domTools?.onTarget?.(event);
+          if (active.call) onStep?.({ type: "tool-target", call: active.call, target: event });
+        },
+      };
+      for (const tool of createDomTools(snapshotter, domTools)) {
         if (!this.registry.has(tool.name)) {
           this.registry.register(tool, { signal: domAbort.signal, skipModelContext: true });
         }
@@ -85,7 +96,7 @@ export class GuiAgent {
         messages.push({ role: "assistant", content: response.text ?? "", toolCalls });
 
         for (const call of toolCalls) {
-          const text = await this.runToolCall(call, confirm, onStep);
+          const text = await this.runToolCall(call, confirm, onStep, active);
           messages.push({ role: "tool", content: text, toolCallId: call.id });
         }
       }
@@ -100,6 +111,7 @@ export class GuiAgent {
     call: ToolCall,
     confirm: GuiAgentOptions["confirm"],
     onStep: GuiAgentOptions["onStep"],
+    active: { call: ToolCall | null },
   ): Promise<string> {
     const tool = this.registry.get(call.name);
     onStep?.({ type: "tool-call", call });
@@ -117,9 +129,14 @@ export class GuiAgent {
       }
     }
 
-    const result = await tool.execute(call.arguments ?? {});
-    onStep?.({ type: "tool-result", call, result });
-    return envelopeToText(result) || (result.isError ? "Error" : "ok");
+    active.call = call;
+    try {
+      const result = await tool.execute(call.arguments ?? {});
+      onStep?.({ type: "tool-result", call, result });
+      return envelopeToText(result) || (result.isError ? "Error" : "ok");
+    } finally {
+      active.call = null;
+    }
   }
 
   private toolSpecs(): ToolSpec[] {

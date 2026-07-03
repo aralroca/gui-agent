@@ -17,9 +17,11 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { GuiAgent } from "../agent.js";
 import { registry } from "../registry.js";
+import { createAgentVisualizer } from "../ui/index.js";
+import type { AgentVisualizer, AgentVisualizerOptions } from "../ui/index.js";
 import type { AgentStep, GuiAgentOptions, RunResult, ToolDefinition } from "../types.js";
 
 /**
@@ -58,40 +60,63 @@ interface GuiAgentContextValue {
   running: boolean;
   steps: AgentStep[];
   lastResult: RunResult | null;
+  /** The interaction visualizer, when enabled via the `visualizer` prop. */
+  visualizer: AgentVisualizer | null;
 }
 
 const GuiAgentContext = createContext<GuiAgentContextValue | null>(null);
 
 export interface GuiAgentProviderProps extends GuiAgentOptions {
   children?: ReactNode;
+  /**
+   * Visualize the agent's interactions (status chips + element glow) from
+   * `@aralroca/gui-agent/ui`. Pass `true` for defaults, or options to
+   * configure. Render the chips with {@link AgentSteps}.
+   */
+  visualizer?: boolean | AgentVisualizerOptions;
 }
 
 /** Provide a configured {@link GuiAgent} to the tree. */
 export function GuiAgentProvider(props: GuiAgentProviderProps): ReactNode {
-  const { children, onStep, ...options } = props;
+  const { children, onStep, visualizer: visualizerOption, ...options } = props;
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<AgentStep[]>([]);
   const [lastResult, setLastResult] = useState<RunResult | null>(null);
 
-  const agent = useMemo(
+  // Client-only: the visualizer renders into the live document.
+  const visualizer = useMemo(
     () =>
-      new GuiAgent({
+      visualizerOption && typeof document !== "undefined"
+        ? createAgentVisualizer(visualizerOption === true ? {} : visualizerOption)
+        : null,
+    // Recreate only when toggled; option changes require a remount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [Boolean(visualizerOption)],
+  );
+  useEffect(() => () => visualizer?.dispose(), [visualizer]);
+
+  const agent = useMemo(
+    () => {
+      const agentOptions: GuiAgentOptions = {
         ...options,
         onStep: (step) => {
           setSteps((prev) => [...prev, step]);
           onStep?.(step);
         },
-      }),
+      };
+      return new GuiAgent(visualizer ? visualizer.bind(agentOptions) : agentOptions);
+    },
     // Rebuild only when the LLM identity changes; other options are read live
     // enough for typical usage.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [options.llm],
+    [options.llm, visualizer],
   );
 
   const run = useCallback(
     async (goal: string) => {
       setRunning(true);
       setSteps([]);
+      visualizer?.clear();
       try {
         const result = await agent.run(goal);
         setLastResult(result);
@@ -100,12 +125,12 @@ export function GuiAgentProvider(props: GuiAgentProviderProps): ReactNode {
         setRunning(false);
       }
     },
-    [agent],
+    [agent, visualizer],
   );
 
   const value = useMemo<GuiAgentContextValue>(
-    () => ({ run, running, steps, lastResult }),
-    [run, running, steps, lastResult],
+    () => ({ run, running, steps, lastResult, visualizer }),
+    [run, running, steps, lastResult, visualizer],
   );
 
   return createElement(GuiAgentContext.Provider, { value }, children);
@@ -116,4 +141,26 @@ export function useGuiAgent(): GuiAgentContextValue {
   const ctx = useContext(GuiAgentContext);
   if (!ctx) throw new Error("useGuiAgent must be used within a <GuiAgentProvider>.");
   return ctx;
+}
+
+export interface AgentStepsProps {
+  className?: string;
+  style?: CSSProperties;
+}
+
+/**
+ * Render the visualizer's chip list. Requires `visualizer` to be enabled on
+ * the surrounding {@link GuiAgentProvider}.
+ */
+export function AgentSteps(props: AgentStepsProps): ReactNode {
+  const { visualizer } = useGuiAgent();
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!visualizer || !ref.current) return;
+    ref.current.appendChild(visualizer.element);
+    return () => visualizer.element.remove();
+  }, [visualizer]);
+
+  return createElement("div", { ref, className: props.className, style: props.style });
 }
