@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/demo.gif" width="840" alt="Demo: the agent invites a teammate and edits a profile field while the built-in visualizer shows status chips and a gradient glow over each element it touches" />
+  <img src="docs/demo.gif" width="1000" alt="Demo: the agent invites a teammate, searches users, and edits a profile field while the built-in visualizer shows status chips and a gradient glow over each element it touches" />
 </p>
 
 <p align="center"><sub>The optional <a href="#-visualizing-the-agent-aralrocagui-agentui">visualizer</a> in action: status chips per tool call, an animated gradient glow that tours every element the agent touches, and a backdrop veil that keeps the user's focus on the action.</sub></p>
