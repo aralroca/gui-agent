@@ -94,7 +94,7 @@ export class ToolRegistry {
       inputSchema: syncSchema ?? { type: "object", properties: {} },
       annotations: { readOnlyHint: false, ...def.annotations },
       execute,
-      dispose: () => this.unregister(def.name),
+      dispose: () => this.remove(tool),
     };
 
     this.tools.set(def.name, tool);
@@ -112,9 +112,9 @@ export class ToolRegistry {
 
     if (options.signal) {
       if (options.signal.aborted) {
-        this.unregister(def.name);
+        this.remove(tool);
       } else {
-        options.signal.addEventListener("abort", () => this.unregister(def.name), { once: true });
+        options.signal.addEventListener("abort", () => this.remove(tool), { once: true });
       }
     }
 
@@ -125,6 +125,15 @@ export class ToolRegistry {
   /** Remove a tool by name. */
   unregister(name: string): void {
     if (this.tools.delete(name)) this.emit();
+  }
+
+  /**
+   * Remove a specific tool instance — but only if it's still the one registered
+   * under its name. A stale registration's `dispose()` / abort listener must not
+   * evict a newer tool that replaced it (the `replace: true` / re-register case).
+   */
+  private remove(tool: RegisteredTool): void {
+    if (this.tools.get(tool.name) === tool) this.unregister(tool.name);
   }
 
   /** Remove every tool. */

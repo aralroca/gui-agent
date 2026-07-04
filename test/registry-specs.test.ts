@@ -63,4 +63,31 @@ describe("RegisterOptions.replace", () => {
       /already registered/,
     );
   });
+
+  it("a stale registration's aborted signal does not evict the tool that replaced it", () => {
+    registry = new ToolRegistry();
+    const first = new AbortController();
+    registry.register(
+      { name: "dup", description: "old", execute: () => "old" },
+      { signal: first.signal },
+    );
+    // Replace it (the React double-mount case) with a fresh registration.
+    registry.register(
+      { name: "dup", description: "new", execute: () => "new" },
+      { replace: true },
+    );
+    // The OLD signal aborts AFTER the replacement — it must not remove the new tool.
+    first.abort();
+    expect(registry.has("dup")).toBe(true);
+    expect(registry.get("dup")?.description).toBe("new");
+  });
+
+  it("disposing a stale handle does not evict the tool that replaced it", () => {
+    registry = new ToolRegistry();
+    const old = registry.register({ name: "dup", description: "old", execute: () => "" });
+    registry.register({ name: "dup", description: "new", execute: () => "" }, { replace: true });
+    old.dispose();
+    expect(registry.has("dup")).toBe(true);
+    expect(registry.get("dup")?.description).toBe("new");
+  });
 });

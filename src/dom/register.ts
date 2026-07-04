@@ -30,14 +30,23 @@ export interface RegisterDomToolsOptions extends DomToolsOptions {
  */
 export function registerDomTools(options: RegisterDomToolsOptions = {}): Dispose {
   const { signal, registry = defaultRegistry, skipModelContext = false, ...domOptions } = options;
+
+  // Own the lifetime with an internal controller composed with the caller's
+  // signal. dispose() aborts it, which unregisters the tools from BOTH the local
+  // registry AND document.modelContext (the mirror is tied to the same signal) —
+  // calling tool.dispose() would only clear the local entry and leave stale DOM
+  // tools advertised on modelContext.
+  const controller = new AbortController();
+  if (signal) {
+    if (signal.aborted) controller.abort();
+    else signal.addEventListener("abort", () => controller.abort(), { once: true });
+  }
+
   const snapshotter = new DomSnapshotter();
-  const tools = createDomTools(snapshotter, domOptions);
+  for (const tool of createDomTools(snapshotter, domOptions)) {
+    registry.register(tool, { signal: controller.signal, skipModelContext, replace: true });
+  }
 
-  const registered = tools.map((tool) =>
-    registry.register(tool, { signal, skipModelContext, replace: true }),
-  );
-
-  return () => {
-    for (const tool of registered) tool.dispose();
-  };
+  return () => controller.abort();
 }
+
