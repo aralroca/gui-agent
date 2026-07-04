@@ -48,7 +48,8 @@ export function useTool<I extends Record<string, unknown>>(
         // Always call the latest execute via the ref.
         execute: (input: I) => defRef.current.execute(input),
       },
-      { signal: controller.signal },
+      // `replace` keeps StrictMode/Fast Refresh double-mounts from throwing.
+      { signal: controller.signal, replace: true },
     );
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps

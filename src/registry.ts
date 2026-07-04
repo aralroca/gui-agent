@@ -10,7 +10,7 @@
 import { ensureModelContext } from "./polyfill.js";
 import { errorResult, normalizeResult } from "./result.js";
 import { toJsonSchema, toJsonSchemaSync } from "./schema.js";
-import type { JSONSchema, RegisteredTool, ToolDefinition } from "./types.js";
+import type { JSONSchema, RegisteredTool, ToolDefinition, ToolSpec } from "./types.js";
 
 /** Options accepted when registering a tool. */
 export interface RegisterOptions {
@@ -18,6 +18,8 @@ export interface RegisterOptions {
   signal?: AbortSignal;
   /** Skip mirroring onto `document.modelContext` (registry-local only). */
   skipModelContext?: boolean;
+  /** Replace an existing tool with the same name instead of throwing. */
+  replace?: boolean;
 }
 
 export class ToolRegistry {
@@ -27,6 +29,21 @@ export class ToolRegistry {
   /** All currently registered tools, in insertion order. */
   list(): RegisteredTool[] {
     return [...this.tools.values()];
+  }
+
+  /**
+   * JSON-safe specs for every registered tool — what a (possibly remote) LLM
+   * needs to know the tools exist. Zod schemas resolve asynchronously right
+   * after registration; prefer plain JSON Schema for tools whose specs are
+   * shipped per turn.
+   */
+  listToolSpecs(): ToolSpec[] {
+    return this.list().map(({ name, description, inputSchema, annotations }) => ({
+      name,
+      description,
+      inputSchema,
+      annotations,
+    }));
   }
 
   get(name: string): RegisteredTool | undefined {
@@ -54,7 +71,10 @@ export class ToolRegistry {
     if (!def.name) throw new Error("gui-agent: tool `name` is required.");
     if (!def.description) throw new Error(`gui-agent: tool "${def.name}" needs a description.`);
     if (this.tools.has(def.name)) {
-      throw new Error(`gui-agent: a tool named "${def.name}" is already registered.`);
+      if (!options.replace) {
+        throw new Error(`gui-agent: a tool named "${def.name}" is already registered.`);
+      }
+      this.unregister(def.name);
     }
 
     const execute = async (input: Record<string, unknown>) => {
@@ -74,7 +94,7 @@ export class ToolRegistry {
       inputSchema: syncSchema ?? { type: "object", properties: {} },
       annotations: { readOnlyHint: false, ...def.annotations },
       execute,
-      dispose: () => this.unregister(def.name),
+      dispose: () => this.remove(tool),
     };
 
     this.tools.set(def.name, tool);
@@ -92,9 +112,9 @@ export class ToolRegistry {
 
     if (options.signal) {
       if (options.signal.aborted) {
-        this.unregister(def.name);
+        this.remove(tool);
       } else {
-        options.signal.addEventListener("abort", () => this.unregister(def.name), { once: true });
+        options.signal.addEventListener("abort", () => this.remove(tool), { once: true });
       }
     }
 
@@ -105,6 +125,15 @@ export class ToolRegistry {
   /** Remove a tool by name. */
   unregister(name: string): void {
     if (this.tools.delete(name)) this.emit();
+  }
+
+  /**
+   * Remove a specific tool instance — but only if it's still the one registered
+   * under its name. A stale registration's `dispose()` / abort listener must not
+   * evict a newer tool that replaced it (the `replace: true` / re-register case).
+   */
+  private remove(tool: RegisteredTool): void {
+    if (this.tools.get(tool.name) === tool) this.unregister(tool.name);
   }
 
   /** Remove every tool. */

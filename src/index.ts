@@ -14,6 +14,11 @@ export { ensureModelContext, hasModelContext, initializeWebMCPPolyfill } from ".
 export { accessibleName, DomSnapshotter } from "./dom/snapshot.js";
 export { createDomTools } from "./dom/tools.js";
 export type { DomToolsOptions } from "./dom/tools.js";
+export { registerDomTools } from "./dom/register.js";
+export type { RegisterDomToolsOptions } from "./dom/register.js";
+export { setFileInput, dispatchFileDrop } from "./dom/files.js";
+export { createStepDriver } from "./step-driver.js";
+export type { StepDriver } from "./step-driver.js";
 export { normalizeResult, errorResult, envelopeToText } from "./result.js";
 export { toJsonSchema } from "./schema.js";
 
