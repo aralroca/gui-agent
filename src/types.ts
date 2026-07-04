@@ -78,6 +78,7 @@ export interface ToolSpec {
   name: string;
   description: string;
   inputSchema: JSONSchema;
+  annotations?: ToolAnnotations;
 }
 
 /** A request from the model to invoke a tool. */
@@ -133,7 +134,7 @@ export type Confirm = (call: ToolCall, tool: RegisteredTool | undefined) => bool
  * the `/ui` visualizer) use it to highlight the target.
  */
 export interface DomTargetEvent {
-  action: "click" | "fill" | "select_option";
+  action: "click" | "fill" | "select_option" | "upload_file";
   ref: string;
   element: HTMLElement;
   /** Accessible name of the element (may be empty). */

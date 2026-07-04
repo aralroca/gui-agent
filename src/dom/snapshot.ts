@@ -128,6 +128,7 @@ function roleOf(el: Element): string {
     if (type === "radio") return "radio";
     if (type === "button" || type === "submit" || type === "reset") return "button";
     if (type === "search") return "searchbox";
+    if (type === "file") return "file";
     return "textbox";
   }
   if (el.getAttribute("contenteditable") != null) return "textbox";

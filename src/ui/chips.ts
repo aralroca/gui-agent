@@ -26,6 +26,8 @@ const ICONS = {
 export interface ChipListOptions {
   labels?: Record<string, LabelValue>;
   showThinking?: boolean;
+  /** Text of the thinking indicator (i18n). Default "Thinking". */
+  thinkingLabel?: string;
   locateButton?: boolean;
   /** Called when the user clicks a chip's locate button. */
   onLocate?: (el: Element) => void;
@@ -63,7 +65,11 @@ export function createChipList(options: ChipListOptions = {}): ChipList {
     if (!showThinking || thinking) return;
     thinking = document.createElement("div");
     thinking.className = "thinking";
-    thinking.innerHTML = 'Thinking<span class="dots"><span></span><span></span><span></span></span>';
+    thinking.textContent = options.thinkingLabel ?? "Thinking";
+    const dots = document.createElement("span");
+    dots.className = "dots";
+    dots.innerHTML = "<span></span><span></span><span></span>";
+    thinking.appendChild(dots);
     list.appendChild(thinking);
   };
 

@@ -48,6 +48,8 @@ export interface AgentVisualizerOptions {
   labels?: Record<string, LabelValue>;
   /** Show a "Thinking…" indicator while the LLM is deciding. Default true. */
   showThinking?: boolean;
+  /** Text of the thinking indicator (i18n). Default "Thinking". */
+  thinkingLabel?: string;
   /** Show a locate button on chips whose target element is known. Default true. */
   locateButton?: boolean;
   /** Milliseconds the glow ring holds on the last target before fading. Default 1200. */
@@ -79,12 +81,13 @@ export interface AgentVisualizer {
 }
 
 export function createAgentVisualizer(options: AgentVisualizerOptions = {}): AgentVisualizer {
-  const { chips = true, highlight = true, container, labels, showThinking, locateButton, glowDuration, glowDwell, backdrop = true, theme } = options;
+  const { chips = true, highlight = true, container, labels, showThinking, thinkingLabel, locateButton, glowDuration, glowDwell, backdrop = true, theme } = options;
   const userBackdrop = backdrop === true ? {} : backdrop; // BackdropOptions | false
 
   const chipList = createChipList({
     labels,
     showThinking,
+    thinkingLabel,
     locateButton,
     onLocate: (el) => highlighter.highlight(el),
   });

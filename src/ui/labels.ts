@@ -10,6 +10,7 @@ export const DEFAULT_LABELS: Record<string, LabelValue> = {
   read_page: "Reading page",
   wait_for_text: "Waiting",
   navigate: "Navigating",
+  upload_file: "Uploading",
 };
 
 /** `invite_member` → "Invite member". */

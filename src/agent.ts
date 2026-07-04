@@ -15,7 +15,6 @@ import type {
   AgentMessage,
   DomTargetEvent,
   GuiAgentOptions,
-  RegisteredTool,
   RunResult,
   ToolCall,
   ToolSpec,
@@ -140,11 +139,7 @@ export class GuiAgent {
   }
 
   private toolSpecs(): ToolSpec[] {
-    return this.registry.list().map((tool: RegisteredTool) => ({
-      name: tool.name,
-      description: tool.description,
-      inputSchema: tool.inputSchema,
-    }));
+    return this.registry.listToolSpecs();
   }
 
   private systemPrompt(): string {

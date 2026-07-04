@@ -30,6 +30,27 @@ export function refOf(snapshotter: DomSnapshotter, el: Element): string {
   throw new Error("ref not found for element");
 }
 
+/**
+ * Stub `DataTransfer` (jsdom doesn't implement its constructor) with a minimal
+ * fake exposing `items.add` and an array-like `files` FileList.
+ */
+export function stubDataTransfer(): void {
+  class FakeDataTransfer {
+    private stored: File[] = [];
+    items = { add: (file: File) => void this.stored.push(file) };
+    get files(): FileList {
+      const files = this.stored;
+      const list: Record<number | string, unknown> = {
+        length: files.length,
+        item: (i: number) => files[i] ?? null,
+      };
+      files.forEach((file, i) => (list[i] = file));
+      return list as unknown as FileList;
+    }
+  }
+  vi.stubGlobal("DataTransfer", FakeDataTransfer);
+}
+
 /** The glow ring wrapper inside the highlight overlay's shadow root. */
 export function highlightBox(): HTMLElement {
   return document.querySelector("[data-gui-agent-highlight]")!.shadowRoot!.querySelector(".box")!;

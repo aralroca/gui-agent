@@ -6,6 +6,7 @@
  * read the text snapshot, then click / fill / select elements by their stable
  * ref. Every mutating tool returns a fresh snapshot so the model stays oriented.
  */
+import { dispatchFileDrop, setFileInput } from "./files.js";
 import { accessibleName, DomSnapshotter } from "./snapshot.js";
 import type { DomTargetEvent, ToolDefinition } from "../types.js";
 
@@ -18,6 +19,12 @@ export interface DomToolsOptions {
   allowNavigation?: boolean;
   /** Observe the resolved live element right before click/fill/select act on it. */
   onTarget?: (event: DomTargetEvent) => void;
+  /**
+   * Resolve an attachment reference id (e.g. `"att_1"`) to a `File`. Providing
+   * this enables the `upload_file` tool, which injects the file into a file
+   * input or dropzone on the page.
+   */
+  resolveAttachment?: (id: string) => Promise<File | null>;
 }
 
 const refSchema = {
@@ -44,7 +51,14 @@ export function createDomTools(
 
   const resolve = (ref: string): HTMLElement => {
     const el = snapshotter.resolve(ref);
-    if (!el) throw new Error(`No element for ref "${ref}". Call read_page for current refs.`);
+    if (!el) {
+      // The page changed and the ref is stale. Include a fresh snapshot in the
+      // error so the model re-orients with valid refs on its next step instead
+      // of blindly retrying the dead ref (which otherwise loops).
+      throw new Error(
+        `No element for ref "${ref}" — the page changed. Current elements:\n${snapshot()}`,
+      );
+    }
     return el as HTMLElement;
   };
 
@@ -128,6 +142,35 @@ export function createDomTools(
       },
     },
   ];
+
+  if (options.resolveAttachment) {
+    const resolveAttachment = options.resolveAttachment;
+    tools.push({
+      name: "upload_file",
+      description:
+        "Upload a chat attachment into a file input or dropzone on the page. Pass the attachment's reference id (e.g. \"att_1\") and the element ref from read_page. If the element is not an <input type=\"file\">, the file is dropped onto it.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          ref: { type: "string", description: "Element ref from read_page." },
+          attachment: { type: "string", description: 'Attachment reference id, e.g. "att_1".' },
+        },
+        required: ["ref", "attachment"],
+      },
+      execute: async ({ ref, attachment }) => {
+        const el = resolve(ref as string);
+        const file = await resolveAttachment(String(attachment ?? ""));
+        if (!file) throw new Error(`Unknown attachment "${attachment}".`);
+        notifyTarget("upload_file", ref as string, el);
+        if (el instanceof HTMLInputElement && el.type === "file") {
+          setFileInput(el, [file]);
+        } else {
+          dispatchFileDrop(el, [file]);
+        }
+        return withSnapshot(`Uploaded ${file.name} to ${ref}.`);
+      },
+    });
+  }
 
   if (options.allowNavigation) {
     tools.push({
