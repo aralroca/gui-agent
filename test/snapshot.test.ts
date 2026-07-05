@@ -56,7 +56,7 @@ describe("DomSnapshotter", () => {
         <input role="combobox" aria-expanded="true"
                placeholder="Search pages, sessions, users, businesses…" />
         <div role="listbox">
-          <div role="option">Alejandro Rosás García</div>
+          <div role="option">Foo</div>
           <div role="option">Home</div>
         </div>
       </div>
@@ -68,9 +68,9 @@ describe("DomSnapshotter", () => {
     expect(text).toMatch(/\[e\d+\] combobox "Search pages, sessions, users, businesses…"/);
     // …but the results must be captured too, and be resolvable back to the live
     // node so `click` can open them.
-    expect(text).toMatch(/\[e\d+\] option "Alejandro Rosás García"/);
-    const ref = text.match(/\[(e\d+)\] option "Alejandro Rosás García"/)?.[1];
+    expect(text).toMatch(/\[e\d+\] option "Foo"/);
+    const ref = text.match(/\[(e\d+)\] option "Foo"/)?.[1];
     expect(ref).toBeTruthy();
-    expect(snap.resolve(ref!)?.textContent).toContain("Alejandro Rosás García");
+    expect(snap.resolve(ref!)?.textContent).toContain("Foo");
   });
 });
