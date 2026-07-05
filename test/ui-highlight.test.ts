@@ -53,6 +53,38 @@ describe("createHighlighter", () => {
     highlighter.dispose();
   });
 
+  it("waits for a selector whose element mounts later, then rings it (xyflow async nodes)", () => {
+    // A React Flow node created by a tool isn't in the DOM on the same tick
+    // (React renders async), so highlighting it by element would no-op. Passing
+    // a selector lets the ring wait for the node to mount, then glow it.
+    const highlighter = createHighlighter();
+    highlighter.highlight("#late-node");
+    // Nothing to show yet — the target doesn't exist.
+    expect(document.querySelector("[data-gui-agent-highlight]")).toBeNull();
+
+    // The node mounts a few frames later.
+    const el = document.createElement("div");
+    el.id = "late-node";
+    el.getBoundingClientRect = () => fakeRect(10, 20, 100, 40);
+    document.body.appendChild(el);
+
+    // The poll resolves it and the ring appears around it.
+    vi.advanceTimersByTime(100);
+    const box = highlightBox();
+    expect(box.classList.contains("on")).toBe(true);
+    expect(box.style.left).toBe("4px");
+    expect(box.style.top).toBe("14px");
+    highlighter.dispose();
+  });
+
+  it("gives up on a selector that never mounts (no ring, no leak)", () => {
+    const highlighter = createHighlighter();
+    highlighter.highlight("#never", { duration: 500 });
+    vi.advanceTimersByTime(5000);
+    expect(document.querySelector("[data-gui-agent-highlight]")).toBeNull();
+    highlighter.dispose();
+  });
+
   it("queues rapid highlights so each target stays visible for glowDwell", () => {
     // Regression: agent actions run in milliseconds — three highlights in a row
     // (email field → role select → send button) must tour each element, not
