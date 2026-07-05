@@ -79,6 +79,48 @@ Importing the package installs the WebMCP polyfill automatically — **no `<scri
 
 The built-in loop discovers all available tools, asks your LLM what to do, runs the calls (gated by your optional `confirm`), feeds results back, and repeats until done.
 
+### How the agent picks a tool
+
+For each step the agent prefers a **purpose-built WebMCP tool** if one fits, and only **infers the DOM** when nothing is exposed for the job:
+
+```mermaid
+flowchart TD
+    Goal["🗣️  Goal in natural language"]
+    Loop["🧠  Agent loop · bring your own LLM<br/>(AI SDK adapter · remote LLM · React bindings)"]
+    Decide{"Is there a purpose-built<br/>WebMCP tool for this step?"}
+    WebMCP["⚙️  Call the WebMCP tool<br/>structured &amp; reliable"]
+    DOM["🖱️  Infer from the DOM<br/>read_page → click / fill / select_option / wait_for_text"]
+    Gate{"Does the tool have<br/>readOnlyHint?"}
+    Confirm["🙋  Human-in-the-loop<br/>confirm()"]
+    Run["Execute the tool"]
+    Feed["Feed the result back to the LLM"]
+    Done["🏁  Done"]
+
+    Goal --> Loop
+    Loop --> Decide
+    Decide -- "Yes · preferred" --> WebMCP
+    Decide -- "No · fallback" --> DOM
+    WebMCP --> Gate
+    DOM --> Gate
+    Gate -- "No · write action" --> Confirm
+    Gate -- "Yes · read-only" --> Run
+    Confirm -- "approved" --> Run
+    Confirm -- "denied" --> Feed
+    Run --> Feed
+    Feed --> Loop
+    Loop -. "no more tool calls · maxSteps" .-> Done
+
+    subgraph MC["document.modelContext · WebMCP (polyfilled — no server, no browser extension)"]
+      direction LR
+      App["Your app's own actions<br/>defineTool() / useTool()"]
+      Ext["Tools registered by other code<br/>discoverExternalTools() · opt-in"]
+    end
+    App -. exposed as .-> WebMCP
+    Ext -. exposed as .-> WebMCP
+```
+
+> The agent is handed a **single merged tool list** and is instructed to prefer your app's WebMCP tools; the synthesized DOM tools are the always-on fallback (a same-named app tool wins). WebMCP tools live on `document.modelContext` — your app registers them (so any WebMCP agent, including the browser's native one, can call them) and `discoverExternalTools()` can pull in tools other code registered there. `upload_file` and `navigate` DOM tools are opt-in.
+
 ## API
 
 ### Core (`@aralroca/gui-agent`)
