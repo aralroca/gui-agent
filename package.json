@@ -1,6 +1,6 @@
 {
   "name": "@aralroca/gui-agent",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "An open-source WebMCP-powered in-page GUI agent. Let a natural-language agent live inside your web app and drive its UI — no script injection, no browser extension, no headless browser.",
   "keywords": [
     "webmcp",
