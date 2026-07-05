@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/demo.gif" width="1000" alt="Demo: the agent invites a teammate, searches users, and edits a profile field while the built-in visualizer shows status chips and a gradient glow over each element it touches" />
+  <img src="docs/demo.gif" width="1000" alt="Demo: the agent invites a teammate, searches users, and builds a node-based flow on a React Flow canvas while the built-in visualizer shows status chips and a gradient glow over each element it touches — including nodes that mount asynchronously" />
 </p>
 
 <p align="center"><sub>The optional <a href="#-visualizing-the-agent-aralrocagui-agentui">visualizer</a> in action: status chips per tool call, an animated gradient glow that tours every element the agent touches, and a backdrop veil that keeps the user's focus on the action.</sub></p>
@@ -210,7 +210,14 @@ createAgentVisualizer({
 });
 ```
 
-The glow follows automatically for the DOM-fallback tools (`click`, `fill`, `select_option`). Producer tools act through your own code, so they opt in by calling `viz.highlight(element)` from their `execute` — call it once per element you touch and the ring tours them in order (agent actions run faster than human perception, so highlights are queued with a minimum dwell per target).
+The glow follows automatically for the DOM-fallback tools (`click`, `fill`, `select_option`). Producer tools act through your own code, so they opt in by calling `viz.highlight(target)` from their `execute` — call it once per element you touch and the ring tours them in order (agent actions run faster than human perception, so highlights are queued with a minimum dwell per target).
+
+`target` can be an element **or a CSS selector**. Pass a selector when your tool creates its target asynchronously — a React Flow (`@xyflow/react`) node, a portal, a lazily-rendered row — and the ring waits (up to ~2s) for it to mount instead of no-op'ing on a missing element:
+
+```ts
+const id = graph.addNode({ label });        // returns synchronously…
+viz.highlight(`.react-flow__node[data-id="${id}"]`); // …DOM node mounts a tick later; the ring waits for it
+```
 
 Known limitation: elements in the top layer (`<dialog showModal>`, fullscreen) paint above the overlay.
 
@@ -279,7 +286,7 @@ WebMCP tools run with the user's existing session/cookies, so a tool can do real
 npm run demo   # opens a mini "console" you can drive in natural language
 ```
 
-Try: *"invite jane@acme.com as admin"*, *"search Kenji"*, or *"change my display name to Neo"* (the last one uses the DOM fallback — nothing is exposed for it). The demo ships with the visualizer enabled by default, so you'll see the chips, the glow tour, and the backdrop veil exactly as in the GIF above.
+Try: *"invite jane@acme.com as admin"*, *"search Kenji"*, *"change my display name to Neo"* (the last one uses the DOM fallback — nothing is exposed for it), or *"build a workflow"* on the **Workflows** tab — a React Flow canvas where the glow follows each node as the agent adds it (selector highlighting, since the nodes mount asynchronously). The demo ships with the visualizer enabled by default, so you'll see the chips, the glow tour, and the backdrop veil exactly as in the GIF above.
 
 ## Develop
 

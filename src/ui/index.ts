@@ -68,8 +68,12 @@ export interface AgentVisualizerOptions {
 export interface AgentVisualizer {
   /** Feed agent steps (wire into `GuiAgentOptions.onStep`). */
   onStep(step: AgentStep): void;
-  /** Manually flash the glow ring on any element (producer tools, custom UIs). */
-  highlight(el: Element, opts?: { duration?: number }): void;
+  /**
+   * Manually flash the glow ring on an element — or a CSS selector, which is
+   * polled briefly until it mounts (for targets a tool creates asynchronously,
+   * e.g. a React Flow node). Producer tools call this to point at what they touch.
+   */
+  highlight(target: Element | string, opts?: { duration?: number }): void;
   /** Compose this visualizer's `onStep` into a {@link GuiAgentOptions} object. */
   bind<T extends GuiAgentOptions>(options: T): T;
   /** The chip-list host element (shadow DOM inside); append it anywhere. */
@@ -110,8 +114,8 @@ export function createAgentVisualizer(options: AgentVisualizerOptions = {}): Age
       if (chips) chipList.onStep(step);
       if (highlight && step.type === "tool-target") highlighter.highlight(step.target.element);
     },
-    highlight(el, opts) {
-      highlighter.highlight(el, opts);
+    highlight(target, opts) {
+      highlighter.highlight(target, opts);
     },
     bind(agentOptions) {
       const { onStep } = agentOptions;

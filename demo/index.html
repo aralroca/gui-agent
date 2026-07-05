@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>gui-agent demo · mini console</title>
     <style>
-      :root { color-scheme: light dark; --bd: #d8dadf; --mut: #6b7280; --accent: #2563eb; }
+      /* Always light — the demo forces a white background so it looks the same
+         regardless of the OS dark-mode setting. */
+      :root { color-scheme: light; --bd: #d8dadf; --mut: #6b7280; --accent: #2563eb; }
       * { box-sizing: border-box; }
-      body { margin: 0; font: 14px/1.5 system-ui, sans-serif; display: grid; grid-template-columns: 1fr 360px; height: 100vh; }
+      body { margin: 0; font: 14px/1.5 system-ui, sans-serif; display: grid; grid-template-columns: 1fr 360px; height: 100vh; background: #fff; color: #18181b; }
       main { padding: 24px 32px; overflow: auto; }
       h1 { font-size: 20px; margin: 0 0 4px; }
       .sub { color: var(--mut); margin: 0 0 20px; }
@@ -44,6 +46,7 @@
         <button role="tab" aria-selected="true" data-tab="users">Users</button>
         <button role="tab" aria-selected="false" data-tab="team">Team</button>
         <button role="tab" aria-selected="false" data-tab="profile">Profile</button>
+        <button role="tab" aria-selected="false" data-tab="workflows">Workflows</button>
       </nav>
 
       <section class="panel active" data-panel="users">
@@ -69,6 +72,15 @@
       <section class="panel" data-panel="profile">
         <div class="field"><label for="display-name">Display name</label>
           <input id="display-name" value="Aral Roca" /></div>
+      </section>
+
+      <section class="panel" data-panel="workflows">
+        <p class="sub" style="margin-bottom:12px">
+          A node-based flow editor built on React Flow (@xyflow/react). Nodes the agent adds
+          mount asynchronously, so the glow must wait for them (highlight by selector).
+        </p>
+        <!-- React Flow mounts here. Fixed height so the canvas has a size. -->
+        <div id="wf-canvas" style="height:460px;border:1px solid var(--bd);border-radius:12px"></div>
       </section>
     </main>
 

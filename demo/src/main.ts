@@ -14,6 +14,7 @@
 import { defineTool, GuiAgent } from "@aralroca/gui-agent";
 import type { Llm } from "@aralroca/gui-agent";
 import { createAgentVisualizer } from "@aralroca/gui-agent/ui";
+import { mountWorkflows, workflowStore } from "./workflows";
 
 // ---- mini console behavior ---------------------------------------------------
 
@@ -39,6 +40,9 @@ function selectTab(tab: string) {
   }
 }
 
+// Mount the React Flow canvas for the Workflows tab.
+mountWorkflows(document.getElementById("wf-canvas")!);
+
 document.querySelectorAll<HTMLButtonElement>("#tabs button").forEach((btn) =>
   btn.addEventListener("click", () => selectTab(btn.dataset.tab!)),
 );
@@ -59,7 +63,7 @@ renderUsers();
 defineTool({
   name: "go_to_tab",
   description: "Switch the console to a tab.",
-  inputSchema: { type: "object", properties: { tab: { type: "string", enum: ["users", "team", "profile"] } }, required: ["tab"] },
+  inputSchema: { type: "object", properties: { tab: { type: "string", enum: ["users", "team", "profile", "workflows"] } }, required: ["tab"] },
   annotations: { readOnlyHint: true },
   execute: ({ tab }) => {
     selectTab(String(tab));
@@ -110,6 +114,21 @@ defineTool({
   },
 });
 
+defineTool({
+  name: "add_workflow_step",
+  description: "Add a step to the workflow on the Workflows tab (React Flow canvas).",
+  inputSchema: { type: "object", properties: { label: { type: "string" } }, required: ["label"] },
+  execute: ({ label }) => {
+    selectTab("workflows");
+    // The node id is returned synchronously, but React Flow mounts its DOM node
+    // a tick later — so we highlight it by SELECTOR and the ring waits for it
+    // (Element highlighting here would no-op). This is the xyflow glow path.
+    const id = workflowStore.addStep(String(label));
+    viz.highlight(`.react-flow__node[data-id="${id}"]`);
+    return `Added step "${label}" to the workflow.`;
+  },
+});
+
 // ---- the offline demo planner (stand-in for a real LLM) ----------------------
 
 const demoLlm: Llm = async ({ messages }) => {
@@ -125,6 +144,22 @@ const demoLlm: Llm = async ({ messages }) => {
 
 function planFor(goal: string): { name: string; arguments: Record<string, unknown> }[] {
   const g = goal.toLowerCase();
+
+  // Flow builder (React Flow tab): "build a workflow" adds a chain of steps;
+  // "add step X" adds one. Each step is highlighted as it mounts.
+  const addStep = goal.match(/add\s+(?:a\s+)?(?:step\s+)?["“]?([\w \-]+?)["”]?\s*(?:step)?$/i);
+  if (
+    (g.includes("workflow") || g.includes("flow") || g.includes("pipeline")) &&
+    (g.includes("build") || g.includes("create"))
+  ) {
+    return ["Trigger", "Fetch data", "Transform", "Send notification"].map((label) => ({
+      name: "add_workflow_step",
+      arguments: { label },
+    }));
+  }
+  if (g.includes("step") && addStep) {
+    return [{ name: "add_workflow_step", arguments: { label: addStep[1]!.trim() } }];
+  }
 
   const invite = goal.match(/([\w.+-]+@[\w-]+\.[\w.-]+)/);
   if (g.includes("invite") && invite) {
@@ -148,6 +183,7 @@ function planFor(goal: string): { name: string; arguments: Record<string, unknow
 
   if (g.includes("profile")) return [{ name: "go_to_tab", arguments: { tab: "profile" } }];
   if (g.includes("team")) return [{ name: "go_to_tab", arguments: { tab: "team" } }];
+  if (g.includes("workflow")) return [{ name: "go_to_tab", arguments: { tab: "workflows" } }];
   return [];
 }
 
@@ -206,4 +242,7 @@ document.getElementById("ask")!.addEventListener("submit", async (e) => {
   add("agent", result.text);
 });
 
-add("agent", "Hi! Try: \"invite jane@acme.com as admin\", \"search Kenji\", or \"change my display name to Neo\".");
+add(
+  "agent",
+  'Hi! Try: "invite jane@acme.com as admin", "search Kenji", "change my display name to Neo", or "build a workflow" (watch the glow follow each React Flow node).',
+);

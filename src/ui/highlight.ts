@@ -38,12 +38,20 @@ export interface HighlighterOptions {
 }
 
 export interface Highlighter {
-  highlight(el: Element, opts?: { duration?: number }): void;
+  /**
+   * Ring an element, or a CSS selector. A selector is resolved against the live
+   * DOM and, if the element isn't there yet, polled for up to {@link WAIT_MS} —
+   * so a target that mounts a frame or two later (e.g. a React Flow node a tool
+   * just created) still gets the glow instead of being silently skipped.
+   */
+  highlight(target: Element | string, opts?: { duration?: number }): void;
   dispose(): void;
 }
 
 const FADE_MS = 300;
 const PADDING = 6;
+/** How long to poll for a selector's element before giving up. */
+const WAIT_MS = 2000;
 
 interface QueuedTarget {
   el: Element;
@@ -242,23 +250,54 @@ export function createHighlighter(options: HighlighterOptions = {}): Highlighter
     }
   };
 
-  return {
-    highlight(el, opts) {
-      if (typeof document === "undefined" || !el.isConnected) return;
-      queue.push({ el, duration: opts?.duration ?? glowDuration });
-      if (!current) {
-        advance();
+  // Queue a resolved element for the tour (the common path).
+  const enqueue = (el: Element, duration: number) => {
+    queue.push({ el, duration });
+    if (!current) {
+      advance();
+      return;
+    }
+    if (advanceTimer !== undefined) return; // a tour is already in progress
+    // The current target is holding for its fade; move on once it has been
+    // visible for the dwell time.
+    clearTimers();
+    const remainingDwell = Math.max(0, glowDwell - (Date.now() - shownAt));
+    if (remainingDwell === 0) advance();
+    else advanceTimer = setTimeout(advance, remainingDwell);
+  };
+
+  // Resolve a selector now, else poll until it mounts or WAIT_MS elapses. Lets
+  // the ring follow tools that create their target asynchronously (React Flow
+  // nodes, portals, lazily-rendered rows) instead of no-op'ing on a missing el.
+  let disposed = false;
+  const waitForSelector = (selector: string, duration: number) => {
+    const start = Date.now();
+    const tryResolve = () => {
+      if (disposed) return;
+      const el = document.querySelector(selector);
+      if (el?.isConnected) {
+        enqueue(el, duration);
         return;
       }
-      if (advanceTimer !== undefined) return; // a tour is already in progress
-      // The current target is holding for its fade; move on once it has been
-      // visible for the dwell time.
-      clearTimers();
-      const remainingDwell = Math.max(0, glowDwell - (Date.now() - shownAt));
-      if (remainingDwell === 0) advance();
-      else advanceTimer = setTimeout(advance, remainingDwell);
+      if (Date.now() - start >= WAIT_MS) return; // gave up — no ring, no leak
+      schedule(tryResolve);
+    };
+    tryResolve();
+  };
+
+  return {
+    highlight(target, opts) {
+      if (typeof document === "undefined") return;
+      const duration = opts?.duration ?? glowDuration;
+      if (typeof target === "string") {
+        waitForSelector(target, duration);
+        return;
+      }
+      if (!target.isConnected) return;
+      enqueue(target, duration);
     },
     dispose() {
+      disposed = true;
       hide();
       host?.remove();
       host = null;
