@@ -111,7 +111,7 @@ flowchart TD
     WebMCP --> Gate{"Does the tool have<br/>readOnlyHint?"}
     DOM --> Gate
     Gate -- "No · write action" --> Confirm["🙋  Human-in-the-loop confirm()"]
-    Gate -- "Yes · read-only" --> Run["Execute the tool"]
+    Gate -- "Yes · read-only" --> Run["Execute"]
     Confirm -- "approved" --> Run
     Confirm -- "denied" --> Feed
     Run --> Feed["Feed the result back to the LLM"]
