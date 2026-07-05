@@ -36,6 +36,24 @@ Inspired by [page-agent](https://github.com/alibaba/page-agent), but built on th
 
 > ⚠️ Early/experimental. WebMCP is a moving [W3C draft](https://webmachinelearning.github.io/webmcp/); APIs may change.
 
+## Table of Contents
+
+- [Install](#install)
+- [Quick start](#quick-start)
+- [How it works](#how-it-works)
+  - [How the agent picks a tool](#how-the-agent-picks-a-tool)
+- [Compared to page-agent](#compared-to-page-agent)
+- [API](#api)
+  - [Core](#core-aralrocagui-agent)
+  - [Visualizing the agent](#-visualizing-the-agent-aralrocagui-agentui)
+  - [Bring your own LLM](#bring-your-own-llm)
+  - [AI SDK adapter](#ai-sdk-adapter-aralrocagui-agentai-sdk)
+  - [React](#react-aralrocagui-agentreact)
+- [Safety](#safety)
+- [Demo](#demo)
+- [Develop](#develop)
+- [License](#license)
+
 ## Install
 
 ```bash
@@ -85,41 +103,49 @@ For each step the agent prefers a **purpose-built WebMCP tool** if one fits, and
 
 ```mermaid
 flowchart TD
-    Goal["🗣️  Goal in natural language"]
-    Loop["🧠  Agent loop · bring your own LLM<br/>(AI SDK adapter · remote LLM · React bindings)"]
-    Decide{"Is there a purpose-built<br/>WebMCP tool for this step?"}
-    WebMCP["⚙️  Call the WebMCP tool<br/>structured &amp; reliable"]
-    DOM["🖱️  Infer from the DOM<br/>read_page → click / fill / select_option / wait_for_text"]
-    Gate{"Does the tool have<br/>readOnlyHint?"}
-    Confirm["🙋  Human-in-the-loop<br/>confirm()"]
-    Run["Execute the tool"]
-    Feed["Feed the result back to the LLM"]
-    Done["🏁  Done"]
-
-    Goal --> Loop
-    Loop --> Decide
-    Decide -- "Yes · preferred" --> WebMCP
-    Decide -- "No · fallback" --> DOM
-    WebMCP --> Gate
+    Goal["🗣️  Goal in natural language"] --> Loop["🧠  Agent loop · bring your own LLM<br/>(AI SDK adapter · remote LLM · React bindings)"]
+    Loop --> Discover["🔍  Discover the available tools"]
+    Discover --> Decide{"Is there a purpose-built<br/>WebMCP tool for this step?"}
+    Decide -- "Yes · preferred" --> WebMCP["⚙️  Call the WebMCP tool<br/>structured &amp; reliable"]
+    Decide -- "No · fallback" --> DOM["🖱️  Infer from the DOM<br/>read_page → click / fill / select_option / wait_for_text"]
+    WebMCP --> Gate{"Does the tool have<br/>readOnlyHint?"}
     DOM --> Gate
-    Gate -- "No · write action" --> Confirm
-    Gate -- "Yes · read-only" --> Run
+    Gate -- "No · write action" --> Confirm["🙋  Human-in-the-loop confirm()"]
+    Gate -- "Yes · read-only" --> Run["Execute the tool"]
     Confirm -- "approved" --> Run
     Confirm -- "denied" --> Feed
-    Run --> Feed
+    Run --> Feed["Feed the result back to the LLM"]
     Feed --> Loop
-    Loop -. "no more tool calls · maxSteps" .-> Done
+    Loop -. "no more tool calls · maxSteps" .-> Done["🏁  Done"]
 
     subgraph MC["document.modelContext · WebMCP (polyfilled — no server, no browser extension)"]
       direction LR
       App["Your app's own actions<br/>defineTool() / useTool()"]
       Ext["Tools registered by other code<br/>discoverExternalTools() · opt-in"]
     end
-    App -. exposed as .-> WebMCP
-    Ext -. exposed as .-> WebMCP
+    Discover -. reads .-> App
+    Discover -. reads .-> Ext
 ```
 
 > The agent is handed a **single merged tool list** and is instructed to prefer your app's WebMCP tools; the synthesized DOM tools are the always-on fallback (a same-named app tool wins). WebMCP tools live on `document.modelContext` — your app registers them (so any WebMCP agent, including the browser's native one, can call them) and `discoverExternalTools()` can pull in tools other code registered there. `upload_file` and `navigate` DOM tools are opt-in.
+
+## Compared to page-agent
+
+gui-agent is inspired by **[page-agent](https://github.com/alibaba/page-agent)** and shares its core idea — a natural-language agent that drives a real web page from a **text-based DOM** snapshot (no screenshots, no multimodal model) with a bring-your-own-LLM design. The difference is what gui-agent adds by building on the emerging **WebMCP** standard instead of DOM-driving alone:
+
+| Capability | gui-agent | page-agent |
+| --- | --- | --- |
+| **WebMCP standard** (`document.modelContext`) | ✅ Built on the [W3C WebMCP draft](https://webmachinelearning.github.io/webmcp/) + polyfill | ❌ Not WebMCP — its "MCP" is a separate Node server that lets *external* agents drive the browser |
+| **App actions as standard tools** | ✅ `defineTool` registers structured actions on `document.modelContext`, callable by *any* WebMCP agent — including the browser's native one | ⚠️ Custom tools are client-side config, marked `@experimental`, and not exposed via a page standard |
+| **Interop with other in-page tools** | ✅ `discoverExternalTools()` picks up tools other code registered on `document.modelContext` | ❌ Not available |
+| **Human-in-the-loop safety gate** | ✅ Built-in `confirm()` gate — every non-`readOnlyHint` tool is routed through approval before it runs | ⚠️ No mandatory approval gate and no read-only/write distinction (runs autonomously up to `maxSteps`); offers `ask_user`, lifecycle hooks and data-masking instead |
+| **First-class React bindings** | ✅ `GuiAgentProvider`, `useGuiAgent`, `useTool`, `<AgentSteps />` | ❌ None (vanilla panel UI) |
+| **Provider-agnostic LLM** | ✅ Any shape via a one-function `Llm` interface, plus a Vercel AI SDK adapter and a remote-LLM helper | ⚠️ Bring-your-own, but the endpoint must be **OpenAI-compatible** |
+| **Producer + consumer in one** | ✅ Precise structured producer tools *and* a DOM fallback in a single loop | ➖ Primarily a DOM driver (custom tools experimental) |
+
+**When page-agent is the better fit.** page-agent is excellent and has real strengths gui-agent doesn't: it drives **any existing site's DOM without the app opting in**, so it works on legacy or third-party apps (ERP, CRM, admin panels) you don't control — whereas gui-agent's producer tools need the app to register them (its DOM fallback still works anywhere, but the WebMCP value comes from instrumentation). page-agent also ships an optional **Chrome extension** for cross-tab tasks and a **Node MCP server** so external agents (Claude Desktop, Cursor) can drive a real browser. Both projects are MIT-licensed, TypeScript, text-based, and ship an activity visualizer.
+
+In short: reach for **page-agent** to automate sites you *don't* own; reach for **gui-agent** when you *do* own the app and want standards-based, structured, human-gated tools — with a DOM fallback for everything else.
 
 ## API
 
