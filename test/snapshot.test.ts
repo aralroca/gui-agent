@@ -44,4 +44,33 @@ describe("DomSnapshotter", () => {
     const snap = new DomSnapshotter();
     expect(snap.snapshot()).toContain('value="a@b.com"');
   });
+
+  // Regression: a command-palette / combobox (cmdk, Radix) renders its results
+  // as `role="option"` rows that are neither <button>/<a> nor tabbable. If the
+  // snapshot omits them the agent fills the search box, sees no results in the
+  // outline, and can never click a result to navigate — exactly the "search
+  // doesn't complete" bug in the console's global search.
+  it("lists combobox/listbox result options so they can be clicked", () => {
+    document.body.innerHTML = `
+      <div role="dialog" aria-label="Global search">
+        <input role="combobox" aria-expanded="true"
+               placeholder="Search pages, sessions, users, businesses…" />
+        <div role="listbox">
+          <div role="option">Foo</div>
+          <div role="option">Home</div>
+        </div>
+      </div>
+    `;
+    const snap = new DomSnapshotter();
+    const text = snap.snapshot();
+
+    // The searchbox itself is already captured (it's an <input>)…
+    expect(text).toMatch(/\[e\d+\] combobox "Search pages, sessions, users, businesses…"/);
+    // …but the results must be captured too, and be resolvable back to the live
+    // node so `click` can open them.
+    expect(text).toMatch(/\[e\d+\] option "Foo"/);
+    const ref = text.match(/\[(e\d+)\] option "Foo"/)?.[1];
+    expect(ref).toBeTruthy();
+    expect(snap.resolve(ref!)?.textContent).toContain("Foo");
+  });
 });
