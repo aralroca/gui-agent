@@ -64,6 +64,38 @@ export function createDomTools(
 
   const withSnapshot = (message: string) => `${message}\n\nPage now:\n${snapshot()}`;
 
+  /**
+   * Real-browser click sequence. A bare `el.click()` only fires the `click`
+   * event, but modern UI primitives (Radix menus/selects/popovers — anything
+   * that opens on `pointerdown`) never see it, so dropdowns simply don't open
+   * and the agent loops on a menu that never appears. Dispatch the full
+   * pointerdown → mousedown → pointerup → mouseup sequence at the element's
+   * center, then finish with the native `el.click()` for the trailing click
+   * event + activation behavior (checkbox toggling, links, form buttons).
+   */
+  const synthClick = (el: HTMLElement): void => {
+    const rect = el.getBoundingClientRect();
+    const init: MouseEventInit & { pointerId?: number; isPrimary?: boolean; pointerType?: string } =
+      {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        clientX: rect.x + rect.width / 2,
+        clientY: rect.y + rect.height / 2,
+        button: 0,
+        pointerId: 1,
+        isPrimary: true,
+        pointerType: "mouse",
+      };
+    // PointerEvent is missing in some test DOMs — fall back to MouseEvent.
+    const Pointer = typeof PointerEvent !== "undefined" ? PointerEvent : MouseEvent;
+    el.dispatchEvent(new Pointer("pointerdown", { ...init, buttons: 1 }));
+    el.dispatchEvent(new MouseEvent("mousedown", { ...init, buttons: 1 }));
+    el.dispatchEvent(new Pointer("pointerup", { ...init, buttons: 0 }));
+    el.dispatchEvent(new MouseEvent("mouseup", { ...init, buttons: 0 }));
+    el.click();
+  };
+
   const notifyTarget = (action: DomTargetEvent["action"], ref: string, element: HTMLElement) => {
     if (!options.onTarget) return;
     try {
@@ -88,7 +120,7 @@ export function createDomTools(
       execute: ({ ref }) => {
         const el = resolve(ref as string);
         notifyTarget("click", ref as string, el);
-        el.click();
+        synthClick(el);
         return withSnapshot(`Clicked ${ref}.`);
       },
     },
