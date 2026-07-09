@@ -33,6 +33,12 @@ export interface AgentVisualizerTheme {
   chipText?: string;
   /** Gradient stops for the glow ring (up to three are used). */
   glowColors?: string[];
+  /** Band width of the crisp ring in px (`--gua-ring-width`). Default 3. */
+  ringWidth?: number;
+  /** Reach + blur of the soft halo in px (`--gua-halo-size`). Default 12. */
+  haloSize?: number;
+  /** Halo strength 0–1 (`--gua-halo-opacity`); 0 disables it. Default 0.55. */
+  haloOpacity?: number;
   /** Font family for the chips (`--gua-font`). */
   font?: string;
 }
@@ -99,6 +105,9 @@ export function createAgentVisualizer(options: AgentVisualizerOptions = {}): Age
     glowDuration,
     glowDwell,
     glowColors: theme?.glowColors,
+    ringWidth: theme?.ringWidth,
+    haloSize: theme?.haloSize,
+    haloOpacity: theme?.haloOpacity,
     // Keep the visualizer's own chip list sharp on top of any user excludes.
     backdrop: userBackdrop && {
       ...userBackdrop,

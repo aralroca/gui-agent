@@ -33,6 +33,12 @@ export interface HighlighterOptions {
   glowDwell?: number;
   /** Gradient stops for the ring (up to three are used). */
   glowColors?: string[];
+  /** Band width of the crisp ring in px (`--gua-ring-width`). Default 3. */
+  ringWidth?: number;
+  /** Reach + blur of the soft halo in px (`--gua-halo-size`). Default 12. */
+  haloSize?: number;
+  /** Halo strength 0–1 (`--gua-halo-opacity`); 0 disables it. Default 0.55. */
+  haloOpacity?: number;
   /** Blur/dim the page around the target while the glow is visible. Default true. */
   backdrop?: boolean | BackdropOptions;
 }
@@ -103,6 +109,9 @@ export function createHighlighter(options: HighlighterOptions = {}): Highlighter
         host!.style.setProperty(`--gua-glow-${i + 1}`, color);
       });
     }
+    if (options.ringWidth != null) host.style.setProperty("--gua-ring-width", `${options.ringWidth}px`);
+    if (options.haloSize != null) host.style.setProperty("--gua-halo-size", `${options.haloSize}px`);
+    if (options.haloOpacity != null) host.style.setProperty("--gua-halo-opacity", `${options.haloOpacity}`);
     box = document.createElement("div");
     box.className = "box";
     const glow = document.createElement("div");

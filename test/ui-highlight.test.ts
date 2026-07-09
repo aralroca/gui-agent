@@ -278,4 +278,33 @@ describe("createHighlighter", () => {
     highlighter.dispose();
     expect(document.querySelector("[data-gui-agent-highlight]")).toBeNull();
   });
+
+  it("applies intensity options as CSS vars (ringWidth / haloSize / haloOpacity)", () => {
+    const highlighter = createHighlighter({ ringWidth: 2, haloSize: 8, haloOpacity: 0.2 });
+    const el = document.createElement("button");
+    document.body.appendChild(el);
+    el.getBoundingClientRect = () => fakeRect(0, 0, 10, 10);
+    highlighter.highlight(el);
+
+    const host = document.querySelector<HTMLElement>("[data-gui-agent-highlight]")!;
+    expect(host.style.getPropertyValue("--gua-ring-width")).toBe("2px");
+    expect(host.style.getPropertyValue("--gua-halo-size")).toBe("8px");
+    expect(host.style.getPropertyValue("--gua-halo-opacity")).toBe("0.2");
+
+    highlighter.dispose();
+  });
+
+  it("leaves intensity vars unset by default (stylesheet defaults apply)", () => {
+    const highlighter = createHighlighter();
+    const el = document.createElement("button");
+    document.body.appendChild(el);
+    el.getBoundingClientRect = () => fakeRect(0, 0, 10, 10);
+    highlighter.highlight(el);
+
+    const host = document.querySelector<HTMLElement>("[data-gui-agent-highlight]")!;
+    expect(host.style.getPropertyValue("--gua-ring-width")).toBe("");
+    expect(host.style.getPropertyValue("--gua-halo-opacity")).toBe("");
+
+    highlighter.dispose();
+  });
 });

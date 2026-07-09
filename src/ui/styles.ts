@@ -160,17 +160,23 @@ export const HIGHLIGHT_CSS = `
   -webkit-mask-composite: xor;
   mask-composite: exclude;
 }
+/* Intensity is themeable so a host app can tune the ring to its own focus
+   language (all --gua-* vars pierce the shadow root from page CSS on the
+   host element, e.g. [data-gui-agent-highlight] { --gua-ring-width: 2px }):
+   - --gua-ring-width    band width of the crisp ring (default 3px)
+   - --gua-halo-size     how far the soft halo extends + its blur (default 12px)
+   - --gua-halo-opacity  halo strength (default 0.55; 0 disables the halo) */
 .ring {
   inset: 0;
-  padding: 3px;
+  padding: var(--gua-ring-width, 3px);
 }
 .glow {
-  /* Halo annulus: from the ring inward edge out to 12px beyond it. The mask
-     is applied after the blur, so nothing bleeds over the content. */
-  inset: -12px;
-  padding: 15px;
-  filter: blur(12px);
-  opacity: 0.7;
+  /* Halo annulus: from the ring inward edge out to --gua-halo-size beyond it.
+     The mask is applied after the blur, so nothing bleeds over the content. */
+  inset: calc(-1 * var(--gua-halo-size, 12px));
+  padding: calc(var(--gua-ring-width, 3px) + var(--gua-halo-size, 12px));
+  filter: blur(var(--gua-halo-size, 12px));
+  opacity: var(--gua-halo-opacity, 0.55);
 }
 @keyframes gua-rotate { to { --gua-angle: 360deg; } }
 @media (prefers-reduced-motion: reduce) {
