@@ -36,6 +36,9 @@ Inspired by [page-agent](https://github.com/alibaba/page-agent), but built on th
 
 > ⚠️ Early/experimental. WebMCP is a moving [W3C draft](https://webmachinelearning.github.io/webmcp/); APIs may change.
 
+_Thinking is cheap. But what if your agents didn't have to think so much—and instead had **TOTAL CONTROL** of your app (**AUTOMATICALLY**)? Take a look **[Janux Framework](https://github.com/aralroca/Janux)** for more than gui-agent lib_
+
+
 ## Table of Contents
 
 - [Install](#install)
