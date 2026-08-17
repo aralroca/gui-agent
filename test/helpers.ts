@@ -56,6 +56,22 @@ export function highlightBox(): HTMLElement {
   return document.querySelector("[data-gui-agent-highlight]")!.shadowRoot!.querySelector(".box")!;
 }
 
+/** The pointer wrapper inside the simulated-cursor overlay (null when disabled). */
+export function cursorPoint(): HTMLElement | null {
+  const host = document.querySelector("[data-gui-agent-cursor]");
+
+  return (host?.shadowRoot?.querySelector(".point") as HTMLElement | null) ?? null;
+}
+
+/** The pointer's current viewport position, parsed out of its transform. */
+export function cursorAt(): { x: number; y: number } {
+  const match = /translate3d\((-?[\d.]+)px, (-?[\d.]+)px/.exec(cursorPoint()?.style.transform ?? "");
+
+  if (!match) throw new Error("cursor has no transform yet");
+
+  return { x: Number(match[1]), y: Number(match[2]) };
+}
+
 /** The backdrop veil inside the highlight overlay's shadow root (null when disabled). */
 export function highlightBackdrop(): HTMLElement | null {
   return document.querySelector("[data-gui-agent-highlight]")!.shadowRoot!.querySelector(".backdrop");
