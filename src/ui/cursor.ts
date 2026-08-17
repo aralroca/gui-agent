@@ -18,8 +18,8 @@ import { CURSOR_CSS } from "./styles.js";
 import { createShadowHost } from "./host.js";
 
 export interface CursorOptions {
-  /** Fraction of the remaining distance covered per frame (0–1). Default 0.18. */
-  ease?: number;
+  /** How long the pointer takes to reach a target, in ms. Default 380. */
+  travelMs?: number;
 }
 
 export interface Cursor {
@@ -30,19 +30,32 @@ export interface Cursor {
   dispose(): void;
 }
 
-/** Distance in px under which the pointer counts as landed. */
-const ARRIVED_PX = 1.5;
+/**
+ * Default travel duration in ms. Timed against the wall clock rather than
+ * stepped per frame: a proportional per-frame ease ties the duration to the
+ * frame rate, so on a busy budget — an agent mid-run is exactly that — the
+ * pointer was still short of its target when the ring moved on, and the
+ * ripple, which only fires on arrival, never played. Timing it makes a slow
+ * frame budget choppier, never longer.
+ */
+const TRAVEL_MS = 380;
+
+/** Cubic ease-out: quick departure, soft landing — how a hand moves a mouse. */
+const easeOut = (t: number): number => 1 - (1 - t) ** 3;
 
 const ARROW_SVG = `<svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 2.5 L5.5 18.8 L9.7 14.9 L12.2 20.6 L14.9 19.4 L12.4 13.9 L18.2 13.6 Z"/></svg>`;
 
 export function createCursor(options: CursorOptions = {}): Cursor {
-  const ease = prefersReducedMotion() ? 1 : (options.ease ?? 0.18);
+  const travelMs = prefersReducedMotion() ? 0 : (options.travelMs ?? TRAVEL_MS);
   let host: HTMLElement | null = null;
   let point: HTMLElement | null = null;
   let ripple: HTMLElement | null = null;
   let target: Element | null = null;
   let x = 0;
   let y = 0;
+  let fromX = 0;
+  let fromY = 0;
+  let startedAt = 0;
   let traveling = false;
   let looping = false;
   let placed = false;
@@ -106,17 +119,19 @@ export function createCursor(options: CursorOptions = {}): Cursor {
     el.style.transform = next;
   };
 
+  // Interpolate from where the pointer set off toward the target's *live*
+  // center, so the same pass draws the travel and, once landed (progress 1),
+  // keeps the pointer pinned while the page scrolls underneath.
   const advance = () => {
     if (!point || !target?.isConnected) return;
     const dest = centerOf(target);
-    const dx = dest.x - x;
-    const dy = dest.y - y;
-    const landed = Math.hypot(dx, dy) < ARRIVED_PX;
+    const progress = travelMs ? Math.min(1, (Date.now() - startedAt) / travelMs) : 1;
+    const eased = easeOut(progress);
 
-    x += landed ? dx : dx * ease;
-    y += landed ? dy : dy * ease;
+    x = fromX + (dest.x - fromX) * eased;
+    y = fromY + (dest.y - fromY) * eased;
     draw(point);
-    if (landed && traveling) land();
+    if (progress === 1 && traveling) land();
   };
 
   const loop = () => {
@@ -145,15 +160,24 @@ export function createCursor(options: CursorOptions = {}): Cursor {
     y = window.innerHeight || 0;
   };
 
+  // Anchor the interpolation at wherever the pointer currently sits, so a new
+  // target mid-flight continues from there instead of jumping back.
+  const beginTravel = (el: Element) => {
+    if (!placed) seedStart();
+    placed = true;
+    fromX = x;
+    fromY = y;
+    startedAt = Date.now();
+    target = el;
+    traveling = true;
+  };
+
   return {
     moveTo(el) {
       if (typeof document === "undefined" || !el.isConnected) return;
       const shown = ensurePoint();
 
-      if (!placed) seedStart();
-      placed = true;
-      target = el;
-      traveling = true;
+      beginTravel(el);
       shown.classList.add("on");
       startLoop();
     },

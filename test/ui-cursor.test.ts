@@ -69,6 +69,23 @@ describe("createCursor", () => {
     cursor.dispose();
   });
 
+  it("lands within its travel time even when frames are scarce, so the ripple plays", () => {
+    // ~9fps — what an agent mid-run actually leaves of the frame budget. The
+    // travel is timed, not stepped per frame, so it still completes; a
+    // proportional per-frame ease would be hundreds of px short here and the
+    // ripple, which only fires on arrival, would never play.
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => setTimeout(() => cb(0), 110));
+    const cursor = createCursor();
+    const el = targetAt(10, 20, 100, 40);
+
+    cursor.moveTo(el);
+    vi.advanceTimersByTime(500);
+
+    expect(cursorAt()).toEqual({ x: 60, y: 40 });
+    expect(ripple()!.classList.contains("ping")).toBe(true);
+    cursor.dispose();
+  });
+
   it("keeps following the target when the page scrolls under it", () => {
     const cursor = createCursor();
     const el = targetAt(10, 20, 100, 40);
