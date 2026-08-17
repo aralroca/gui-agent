@@ -190,6 +190,7 @@ Everything is configurable:
 createAgentVisualizer({
   chips: true,               // action chip list
   highlight: true,           // glow ring on the target element
+  cursor: false,             // simulated mouse pointer travelling to each target
   showThinking: true,        // "Thinking…" indicator between LLM turns
   locateButton: true,        // ◎ button on chips to re-flash the target
   glowDuration: 1200,        // ms the ring holds on the last target before fading
@@ -221,6 +222,8 @@ The glow follows automatically for the DOM-fallback tools (`click`, `fill`, `sel
 const id = graph.addNode({ label });        // returns synchronously…
 viz.highlight(`.react-flow__node[data-id="${id}"]`); // …DOM node mounts a tick later; the ring waits for it
 ```
+
+Set `cursor: true` to add a **simulated mouse pointer** on top of that tour: an arrow that travels to each target the ring visits and ripples where it lands, so the user sees *where* an action happened and not just that it did. It rides the same queue as the ring — including `viz.highlight()` calls from your own tools — follows the target if the page scrolls under it, and teleports without the ripple under `prefers-reduced-motion`. It is a drawn overlay, not the OS pointer: it does not fire `:hover` or real pointer events, and it never delays the action it illustrates.
 
 Known limitation: elements in the top layer (`<dialog showModal>`, fullscreen) paint above the overlay.
 

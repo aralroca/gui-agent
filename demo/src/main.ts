@@ -204,6 +204,7 @@ function add(kind: "user" | "agent", text: string) {
 const viz = createAgentVisualizer({
   container: document.getElementById("agent-steps")!,
   backdrop: { exclude: ["assistant-panel"] },
+  cursor: true,
 });
 
 // `demoLlm` emits a placeholder ref for the DOM-fallback rename; resolve it from

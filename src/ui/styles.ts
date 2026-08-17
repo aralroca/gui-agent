@@ -102,6 +102,71 @@ export const CHIPS_CSS = `
 }
 `;
 
+export const CURSOR_CSS = `
+:host {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  /* One above the glow ring: the pointer is never occluded by its own target. */
+  z-index: 2147483647;
+}
+.point {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease, visibility 0.3s;
+  will-change: transform;
+}
+.point.on { visibility: visible; opacity: 1; }
+/* Offset so the arrow's tip — not its box — sits on the tracked point. */
+.arrow {
+  position: absolute;
+  left: -5px;
+  top: -2px;
+  width: 22px;
+  height: 22px;
+  display: block;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+.arrow path {
+  fill: var(--gua-cursor-fill, #18181b);
+  stroke: var(--gua-cursor-stroke, #ffffff);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+.ripple {
+  position: absolute;
+  left: -8px;
+  top: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--gua-accent, #18181b);
+  opacity: 0;
+}
+.ripple.ping { animation: gua-ping 0.5s ease-out; }
+@keyframes gua-ping {
+  from { transform: scale(0.35); opacity: 0.9; }
+  to { transform: scale(2.8); opacity: 0; }
+}
+@media (prefers-color-scheme: dark) {
+  .arrow path {
+    fill: var(--gua-cursor-fill, #fafafa);
+    stroke: var(--gua-cursor-stroke, #18181b);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ripple.ping { animation: none; }
+}
+`;
+
 export const HIGHLIGHT_CSS = `
 :host {
   position: fixed;

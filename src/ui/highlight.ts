@@ -41,6 +41,10 @@ export interface HighlighterOptions {
   haloOpacity?: number;
   /** Blur/dim the page around the target while the glow is visible. Default true. */
   backdrop?: boolean | BackdropOptions;
+  /** Called with each target as the ring starts showing it (drives the pointer). */
+  onShow?: (el: Element) => void;
+  /** Called when the tour ends and the ring is torn down. */
+  onHide?: () => void;
 }
 
 export interface Highlighter {
@@ -211,6 +215,7 @@ export function createHighlighter(options: HighlighterOptions = {}): Highlighter
     clearTimers();
     box?.classList.remove("on", "fading");
     backdrop?.classList.remove("on", "fading");
+    options.onHide?.();
   };
 
   const scheduleFade = (delay: number) => {
@@ -233,6 +238,7 @@ export function createHighlighter(options: HighlighterOptions = {}): Highlighter
     backdrop?.classList.add("on");
     backdrop?.classList.remove("fading");
     reposition();
+    options.onShow?.(target.el);
     if (!looping) {
       looping = true;
       schedule(loop);

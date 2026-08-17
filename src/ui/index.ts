@@ -13,6 +13,7 @@
  * ```
  */
 import { createChipList } from "./chips.js";
+import { createCursor } from "./cursor.js";
 import { createHighlighter } from "./highlight.js";
 import type { BackdropOptions } from "./highlight.js";
 import type { LabelValue } from "./labels.js";
@@ -48,6 +49,13 @@ export interface AgentVisualizerOptions {
   chips?: boolean;
   /** Glow the DOM element being acted on. Default true. */
   highlight?: boolean;
+  /**
+   * Show a simulated mouse pointer that travels to each element the glow ring
+   * visits and ripples on arrival. It rides the same target tour as
+   * `highlight`, so it only moves for targets the ring is showing. Default
+   * false.
+   */
+  cursor?: boolean;
   /** Where to append the chip list host. If omitted, place `viz.element` yourself. */
   container?: Element;
   /** Per-tool chip labels; merged over the built-in defaults. */
@@ -91,9 +99,10 @@ export interface AgentVisualizer {
 }
 
 export function createAgentVisualizer(options: AgentVisualizerOptions = {}): AgentVisualizer {
-  const { chips = true, highlight = true, container, labels, showThinking, thinkingLabel, locateButton, glowDuration, glowDwell, backdrop = true, theme } = options;
+  const { chips = true, highlight = true, cursor = false, container, labels, showThinking, thinkingLabel, locateButton, glowDuration, glowDwell, backdrop = true, theme } = options;
   const userBackdrop = backdrop === true ? {} : backdrop; // BackdropOptions | false
 
+  const pointer = cursor ? createCursor() : null;
   const chipList = createChipList({
     labels,
     showThinking,
@@ -108,6 +117,8 @@ export function createAgentVisualizer(options: AgentVisualizerOptions = {}): Age
     ringWidth: theme?.ringWidth,
     haloSize: theme?.haloSize,
     haloOpacity: theme?.haloOpacity,
+    onShow: (el) => pointer?.moveTo(el),
+    onHide: () => pointer?.hide(),
     // Keep the visualizer's own chip list sharp on top of any user excludes.
     backdrop: userBackdrop && {
       ...userBackdrop,
@@ -142,6 +153,7 @@ export function createAgentVisualizer(options: AgentVisualizerOptions = {}): Age
     dispose() {
       chipList.dispose();
       highlighter.dispose();
+      pointer?.dispose();
     },
   };
   return viz;
