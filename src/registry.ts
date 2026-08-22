@@ -147,17 +147,23 @@ export class ToolRegistry {
     const ctx = ensureModelContext();
     if (!ctx) return;
     try {
-      void ctx.registerTool(
-        {
-          name: tool.name,
-          title: tool.title,
-          description: tool.description,
-          inputSchema: schema,
-          annotations: tool.annotations as Record<string, unknown>,
-          execute: tool.execute,
-        },
-        signal ? { signal } : undefined,
-      );
+      Promise.resolve(
+        ctx.registerTool(
+          {
+            name: tool.name,
+            title: tool.title,
+            description: tool.description,
+            inputSchema: schema,
+            annotations: tool.annotations as Record<string, unknown>,
+            execute: tool.execute,
+          },
+          signal ? { signal } : undefined,
+        ),
+      ).catch(() => {
+        // Async rejections (duplicate registrations, AbortError when the
+        // signal aborts on unmount) must not surface as unhandled — the agent
+        // loop relies on the local copy regardless.
+      });
     } catch {
       // A duplicate or rejected mirror registration must not break the local
       // registry — the agent loop relies on the local copy regardless.
