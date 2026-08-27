@@ -100,8 +100,30 @@ export class DomSnapshotter {
     });
 
     if (lines.length === 0) return "(no interactive elements found)";
-    return lines.join("\n");
+    return [...lines, ...budgetNotice(lines.length, maxNodes)].join("\n");
   }
+}
+
+/**
+ * Say when the outline stopped early.
+ *
+ * The walk `break`s at `maxNodes` and used to just end, so a page bigger than
+ * the budget was indistinguishable from a smaller one. The agent then reasons
+ * from absence: an element it cannot see is an element that is not there. Radix
+ * portals dialog content to the END of `document.body`, so the thing that falls
+ * off the budget first is exactly the modal the agent is working in — and the
+ * conclusion it reaches is "the dialog closed", followed by reopening something
+ * that was never shut. Absence of evidence has to look different from evidence
+ * of absence.
+ */
+function budgetNotice(count: number, maxNodes: number): string[] {
+  if (count < maxNodes) return [];
+
+  return [
+    `(outline truncated at the ${maxNodes}-element budget — there are more elements on the page, ` +
+      `including anything rendered last, such as an open dialog. Do NOT read a missing element as ` +
+      `absent: narrow the outline with a root, or act on the refs you already hold.)`,
+  ];
 }
 
 function isHidden(el: Element): boolean {
@@ -180,6 +202,28 @@ export function accessibleName(el: Element): string {
   return "";
 }
 
+/** How much of a field's value the snapshot prints. */
+const VALUE_PREVIEW = 60;
+
+/**
+ * Report a field's value, and SAY SO when the print is only a preview.
+ *
+ * The cut itself is fine — a snapshot must stay compact. Reporting it silently
+ * is not: the agent fills a field, re-reads the page, sees fewer characters than
+ * it wrote, and concludes the field has a character limit. It then retries
+ * shorter and shorter strings hunting for a limit that does not exist, and
+ * converges on this very number. Observed in production on a transaction rule:
+ * six blind retries on one description and one comment, and neither field has a
+ * `maxlength` at all.
+ */
+function valueFlag(value: string): string {
+  if (value.length <= VALUE_PREVIEW) return `value=${JSON.stringify(value)}`;
+
+  const preview = JSON.stringify(value.slice(0, VALUE_PREVIEW));
+
+  return `value=${preview} (${value.length} chars, preview truncated — the field kept all of it)`;
+}
+
 function stateOf(el: Element): string | undefined {
   const flags: string[] = [];
   if ((el as HTMLInputElement).disabled) flags.push("disabled");
@@ -189,11 +233,11 @@ function stateOf(el: Element): string | undefined {
     if (input.type === "checkbox" || input.type === "radio") {
       flags.push(input.checked ? "checked" : "unchecked");
     } else if (input.value) {
-      flags.push(`value=${JSON.stringify(input.value.slice(0, 60))}`);
+      flags.push(valueFlag(input.value));
     }
   } else if (tag === "textarea") {
     const value = (el as HTMLTextAreaElement).value;
-    if (value) flags.push(`value=${JSON.stringify(value.slice(0, 60))}`);
+    if (value) flags.push(valueFlag(value));
   }
   const expanded = el.getAttribute("aria-expanded");
   if (expanded) flags.push(`expanded=${expanded}`);
