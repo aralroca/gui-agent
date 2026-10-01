@@ -16,6 +16,7 @@
  * for the target and for any `exclude`d elements (e.g. your chat panel), via
  * mask layers composited with `exclude`.
  */
+import { GLOW_DWELL_MS } from "../timing.js";
 import { HIGHLIGHT_CSS } from "./styles.js";
 import { createShadowHost } from "./host.js";
 
@@ -77,7 +78,7 @@ interface Rect {
 
 export function createHighlighter(options: HighlighterOptions = {}): Highlighter {
   const glowDuration = options.glowDuration ?? 1200;
-  const glowDwell = options.glowDwell ?? 500;
+  const glowDwell = options.glowDwell ?? GLOW_DWELL_MS;
   const backdropOption = options.backdrop ?? true;
   const backdropConfig = typeof backdropOption === "object" ? backdropOption : {};
   let host: HTMLElement | null = null;

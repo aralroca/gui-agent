@@ -28,6 +28,11 @@ const INTERACTIVE_SELECTOR = [
   "[contenteditable=true]",
   "[contenteditable='']",
   "[tabindex]:not([tabindex='-1'])",
+  "[draggable=true]",
+  // Where a dragged element can be dropped: the page says so with
+  // aria-dropeffect, or with an inline ondrop handler.
+  "[aria-dropeffect]:not([aria-dropeffect=none])",
+  "[ondrop]",
 ].join(",");
 
 const HEADING_SELECTOR = "h1,h2,h3,h4,h5,h6,[role=heading]";
@@ -85,6 +90,8 @@ export class DomSnapshotter {
     };
 
     collect(HEADING_SELECTOR, (el) => {
+      // A heading that can be dragged or dropped on is an element to act on: it gets a ref below.
+      if (el.getAttribute("draggable") === "true" || isDropTarget(el)) return undefined;
       const name = accessibleName(el);
       return name ? `# ${name}` : undefined;
     });
@@ -224,9 +231,17 @@ function valueFlag(value: string): string {
   return `value=${preview} (${value.length} chars, preview truncated — the field kept all of it)`;
 }
 
+function isDropTarget(el: Element): boolean {
+  const effect = el.getAttribute("aria-dropeffect");
+
+  return (!!effect && effect !== "none") || el.hasAttribute("ondrop");
+}
+
 function stateOf(el: Element): string | undefined {
   const flags: string[] = [];
   if ((el as HTMLInputElement).disabled) flags.push("disabled");
+  if (el.getAttribute("draggable") === "true") flags.push("draggable");
+  if (isDropTarget(el)) flags.push("droptarget");
   const tag = el.tagName.toLowerCase();
   if (tag === "input") {
     const input = el as HTMLInputElement;

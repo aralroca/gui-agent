@@ -6,6 +6,7 @@
  * read the text snapshot, then click / fill / select elements by their stable
  * ref. Every mutating tool returns a fresh snapshot so the model stays oriented.
  */
+import { dragAndDrop, VISIBLE_DRAG } from "./drag.js";
 import { dispatchFileDrop, setFileInput } from "./files.js";
 import { accessibleName, DomSnapshotter } from "./snapshot.js";
 import type { DomTargetEvent, ToolDefinition } from "../types.js";
@@ -96,10 +97,10 @@ export function createDomTools(
     el.click();
   };
 
-  const notifyTarget = (action: DomTargetEvent["action"], ref: string, element: HTMLElement) => {
+  const notifyTarget = (action: DomTargetEvent["action"], ref: string, element: HTMLElement, to?: HTMLElement) => {
     if (!options.onTarget) return;
     try {
-      options.onTarget({ action, ref, element, name: accessibleName(element) });
+      options.onTarget({ action, ref, element, name: accessibleName(element), ...(to ? { to } : {}) });
     } catch {
       // Observers must never break the tool itself.
     }
@@ -158,6 +159,28 @@ export function createDomTools(
         notifyTarget("select_option", ref as string, el);
         selectOption(el, String(value ?? ""));
         return withSnapshot(`Selected "${value}" in ${ref}.`);
+      },
+    },
+    {
+      name: "drag",
+      description:
+        "Drag an element (a card, a row, a file) and drop it onto another, as a mouse does: e.g. move a card to another column of a board.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          ref: { type: "string", description: "Ref of the element to drag." },
+          to: { type: "string", description: "Ref of the element to drop it on." },
+        },
+        required: ["ref", "to"],
+      },
+      execute: async ({ ref, to }) => {
+        const el = resolve(ref as string);
+        const target = resolve(to as string);
+        notifyTarget("drag", ref as string, el, target);
+        const result = await dragAndDrop(el, target, VISIBLE_DRAG);
+        if (result.refused) throw new Error(`${ref} can't be dragged right now.`);
+        if (!result.dropped) throw new Error(`${to} doesn't accept ${ref} here.`);
+        return withSnapshot(`Dragged ${ref} onto ${to}.`);
       },
     },
     {

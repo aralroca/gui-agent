@@ -15,6 +15,9 @@
  * teleports, and CSS suppresses the ripple.
  */
 import { CURSOR_CSS } from "./styles.js";
+import { visibleCenter } from "../dom/visible-point.js";
+import { POINTER_LANDED, POINTER_TRAVEL_MS, visitEnded } from "../timing.js";
+import { createCarrier } from "./ghost.js";
 import { createShadowHost } from "./host.js";
 
 export interface CursorOptions {
@@ -23,8 +26,10 @@ export interface CursorOptions {
 }
 
 export interface Cursor {
-  /** Travel to an element's center, rippling on arrival. */
+  /** Travel to the center of the element's on-screen part, rippling on arrival. */
   moveTo(el: Element): void;
+  /** Drag: the pointer's trip from `from` to `to` carries a copy of `from`. */
+  carry(from: Element, to: Element): void;
   /** Fade the pointer out — the tour ended. */
   hide(): void;
   dispose(): void;
@@ -38,7 +43,7 @@ export interface Cursor {
  * ripple, which only fires on arrival, never played. Timing it makes a slow
  * frame budget choppier, never longer.
  */
-const TRAVEL_MS = 380;
+const TRAVEL_MS = POINTER_TRAVEL_MS;
 
 /** Cubic ease-out: quick departure, soft landing — how a hand moves a mouse. */
 const easeOut = (t: number): number => 1 - (1 - t) ** 3;
@@ -60,6 +65,7 @@ export function createCursor(options: CursorOptions = {}): Cursor {
   let looping = false;
   let placed = false;
   let written = "";
+  const carrier = createCarrier();
 
   // jsdom (and exotic runtimes) may lack rAF; a 16ms timeout is close enough.
   const schedule = (cb: () => void) => {
@@ -91,12 +97,6 @@ export function createCursor(options: CursorOptions = {}): Cursor {
     return point;
   };
 
-  const centerOf = (el: Element): { x: number; y: number } => {
-    const rect = el.getBoundingClientRect();
-
-    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-  };
-
   const ping = () => {
     if (!ripple) return;
     ripple.classList.remove("ping");
@@ -104,8 +104,18 @@ export function createCursor(options: CursorOptions = {}): Cursor {
     ripple.classList.add("ping");
   };
 
-  const land = () => {
+  // A visit ends when the pointer lands, or when the tour sends it on (or away)
+  // first: either way what waits on it (a drag, the copy it carries) goes on.
+  const finishVisit = () => {
     traveling = false;
+    if (!target) return;
+    carrier.arrive(target);
+    visitEnded(target);
+    window.dispatchEvent(new CustomEvent(POINTER_LANDED, { detail: target }));
+  };
+
+  const land = () => {
+    finishVisit();
     ping();
   };
 
@@ -117,6 +127,7 @@ export function createCursor(options: CursorOptions = {}): Cursor {
     if (next === written) return;
     written = next;
     el.style.transform = next;
+    carrier.follow(x, y);
   };
 
   // Interpolate from where the pointer set off toward the target's *live*
@@ -124,7 +135,7 @@ export function createCursor(options: CursorOptions = {}): Cursor {
   // keeps the pointer pinned while the page scrolls underneath.
   const advance = () => {
     if (!point || !target?.isConnected) return;
-    const dest = centerOf(target);
+    const dest = visibleCenter(target);
     const progress = travelMs ? Math.min(1, (Date.now() - startedAt) / travelMs) : 1;
     const eased = easeOut(progress);
 
@@ -147,6 +158,9 @@ export function createCursor(options: CursorOptions = {}): Cursor {
   };
 
   const hide = () => {
+    if (traveling) finishVisit();
+    visitEnded(null);
+    carrier.letGo();
     looping = false;
     traveling = false;
     target = null;
@@ -177,10 +191,13 @@ export function createCursor(options: CursorOptions = {}): Cursor {
       if (typeof document === "undefined" || !el.isConnected) return;
       const shown = ensurePoint();
 
+      if (traveling && target !== el) finishVisit();
+      carrier.depart(el, x, y);
       beginTravel(el);
       shown.classList.add("on");
       startLoop();
     },
+    carry: carrier.carry,
     hide,
     dispose() {
       hide();

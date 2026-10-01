@@ -17,7 +17,8 @@ import { createCursor } from "./cursor.js";
 import { createHighlighter } from "./highlight.js";
 import type { BackdropOptions } from "./highlight.js";
 import type { LabelValue } from "./labels.js";
-import type { AgentStep, GuiAgentOptions } from "../types.js";
+import type { AgentStep, DomTargetEvent, GuiAgentOptions } from "../types.js";
+import { visitScheduled } from "../timing.js";
 
 export { DEFAULT_LABELS, humanizeToolName } from "./labels.js";
 export type { LabelValue } from "./labels.js";
@@ -88,6 +89,12 @@ export interface AgentVisualizer {
    * e.g. a React Flow node). Producer tools call this to point at what they touch.
    */
   highlight(target: Element | string, opts?: { duration?: number }): void;
+  /**
+   * Show a drag: the glow tours `from` then `to`, and the pointer (with
+   * `cursor`) carries a copy of `from` between them. Pair it with
+   * `dragAndDrop(from, to, VISIBLE_DRAG)` to perform the drop at that pace.
+   */
+  drag(from: Element, to: Element): void;
   /** Compose this visualizer's `onStep` into a {@link GuiAgentOptions} object. */
   bind<T extends GuiAgentOptions>(options: T): T;
   /** The chip-list host element (shadow DOM inside); append it anywhere. */
@@ -128,14 +135,28 @@ export function createAgentVisualizer(options: AgentVisualizerOptions = {}): Age
   applyTheme(chipList.element, theme);
   if (container) container.appendChild(chipList.element);
 
+  // A drag tours its source, then its target, with the pointer carrying a copy between them.
+  const showTarget = ({ element, to }: Pick<DomTargetEvent, "element" | "to">) => {
+    if (to && pointer) {
+      pointer.carry(element, to);
+      visitScheduled(element);
+      visitScheduled(to);
+    }
+    highlighter.highlight(element);
+    if (to) highlighter.highlight(to);
+  };
+
   const viz: AgentVisualizer = {
     element: chipList.element,
     onStep(step) {
       if (chips) chipList.onStep(step);
-      if (highlight && step.type === "tool-target") highlighter.highlight(step.target.element);
+      if (highlight && step.type === "tool-target") showTarget(step.target);
     },
     highlight(target, opts) {
       highlighter.highlight(target, opts);
+    },
+    drag(from, to) {
+      showTarget({ element: from as HTMLElement, to: to as HTMLElement });
     },
     bind(agentOptions) {
       const { onStep } = agentOptions;

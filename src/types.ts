@@ -134,11 +134,13 @@ export type Confirm = (call: ToolCall, tool: RegisteredTool | undefined) => bool
  * the `/ui` visualizer) use it to highlight the target.
  */
 export interface DomTargetEvent {
-  action: "click" | "fill" | "select_option" | "upload_file";
+  action: "click" | "fill" | "select_option" | "upload_file" | "drag";
   ref: string;
   element: HTMLElement;
   /** Accessible name of the element (may be empty). */
   name: string;
+  /** For `drag`: where `element` is dropped. */
+  to?: HTMLElement;
 }
 
 /** Events emitted as the agent loop runs, for UI/telemetry. */
