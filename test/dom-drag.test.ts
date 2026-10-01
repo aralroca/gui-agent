@@ -106,6 +106,17 @@ describe("dragAndDrop", () => {
     expect(items).toEqual(["string:text/plain"]);
   });
 
+  it("takes data written through items as setData does", async () => {
+    const { card, done } = board();
+    let read = "";
+
+    card.addEventListener("dragstart", (e) => { (e as DragEvent).dataTransfer!.items.add("via-items", "text/x-card"); });
+    done.addEventListener("drop", (e) => { read = (e as DragEvent).dataTransfer!.getData("text/x-card"); });
+    await dragAndDrop(card, done);
+
+    expect(read).toBe("via-items");
+  });
+
   it("stops when the source cancels dragstart", async () => {
     const { card, done, seen } = board();
 
@@ -181,6 +192,16 @@ describe("snapshot of a board", () => {
 
     expect(snapshotter.snapshot()).toMatch(/\[e\d+\] control "Fix login" draggable/);
     expect(snapshotter.snapshot()).toMatch(/\[e\d+\] control "Done" droptarget/);
+  });
+});
+
+describe("snapshot of draggable headings", () => {
+  it("gives a draggable heading and a heading drop target refs", () => {
+    document.body.innerHTML = `<h3 draggable="true">Card</h3><h2 aria-dropeffect="move">Done</h2>`;
+    const outline = new DomSnapshotter().snapshot();
+
+    expect(outline).toMatch(/\[e\d+\] control "Card" draggable/);
+    expect(outline).toMatch(/\[e\d+\] control "Done" droptarget/);
   });
 });
 

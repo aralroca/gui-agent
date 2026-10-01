@@ -25,9 +25,9 @@ export function createDragTransfer(): DataTransfer {
       return [...store.keys()];
     },
     files: [],
-    // The string items a native transfer lists for its data.
+    // The string items a native transfer lists for its data, read and written through the same store.
     get items() {
-      return [...store].map(([type, value]) => ({ kind: "string", type, getAsString: (cb: (s: string) => void) => cb(value), getAsFile: () => null }));
+      return itemList(store);
     },
     getData: (format: string) => store.get(formatOf(format)) ?? "",
     setData: (format: string, value: string) => {
@@ -39,6 +39,21 @@ export function createDragTransfer(): DataTransfer {
     },
     setDragImage: () => undefined,
   } as unknown as DataTransfer;
+}
+
+function itemList(store: Map<string, string>) {
+  const entries = [...store];
+  const items = entries.map(([type, value]) => ({ kind: "string", type, getAsString: (cb: (s: string) => void) => cb(value), getAsFile: () => null }));
+
+  return Object.assign(items, {
+    add: (data: string, type: string) => {
+      store.set(formatOf(type), data);
+    },
+    remove: (index: number) => {
+      if (entries[index]) store.delete(entries[index][0]);
+    },
+    clear: () => store.clear(),
+  });
 }
 
 /** The effect a browser proposes over a target, from what the source allows. */

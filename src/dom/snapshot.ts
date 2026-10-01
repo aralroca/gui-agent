@@ -90,6 +90,8 @@ export class DomSnapshotter {
     };
 
     collect(HEADING_SELECTOR, (el) => {
+      // A heading that can be dragged or dropped on is an element to act on: it gets a ref below.
+      if (el.getAttribute("draggable") === "true" || isDropTarget(el)) return undefined;
       const name = accessibleName(el);
       return name ? `# ${name}` : undefined;
     });
