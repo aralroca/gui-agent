@@ -9,7 +9,8 @@
  * (does not `preventDefault()` its `dragover`) gets no `drop`, exactly as with
  * a real mouse.
  */
-import { GLOW_DWELL_MS, POINTER_TRAVEL_MS } from "../timing.js";
+import { GLOW_DWELL_MS, POINTER_TRAVEL_MS, pointerReaches } from "../timing.js";
+import { allows, createDragTransfer, initialDropEffect } from "./drag-transfer.js";
 import { visibleCenter } from "./visible-point.js";
 
 export interface DragTiming {
@@ -17,15 +18,20 @@ export interface DragTiming {
   grabMs?: number;
   /** Ms between picking it up and letting go over the target (the pointer carries it). Default 0. */
   moveMs?: number;
+  /**
+   * Pick up when the visualizer's pointer lands on the source and drop when
+   * it lands on the target, however long its tour takes; `grabMs`/`moveMs`
+   * are then what is waited when no pointer is shown.
+   */
+  followPointer?: boolean;
 }
 
 /**
- * The pace of the `/ui` visualizer's pointer (with its default `glowDwell`):
- * it picks the source up when it lands on it and drops it when it lands on
- * the target, so the page moves the card as the copy is let go. Pass it to
- * {@link dragAndDrop} when the drag should be watched.
+ * Paced by the `/ui` visualizer's pointer: the page moves the card as the
+ * pointer lets its copy go. Without a pointer, the pace of an empty tour.
+ * Pass it to {@link dragAndDrop} when the drag should be watched.
  */
-export const VISIBLE_DRAG: Required<DragTiming> = { grabMs: POINTER_TRAVEL_MS, moveMs: GLOW_DWELL_MS };
+export const VISIBLE_DRAG: Required<DragTiming> = { grabMs: POINTER_TRAVEL_MS, moveMs: GLOW_DWELL_MS, followPointer: true };
 
 export interface DragResult {
   /** The target accepted the drag and received `drop`. */
@@ -36,12 +42,13 @@ export interface DragResult {
 
 /** Drag `source` onto `target`, firing the page's own drag and drop handlers. */
 export async function dragAndDrop(source: Element, target: Element, timing: DragTiming = {}): Promise<DragResult> {
-  const data = createDataTransfer();
+  const data = createDragTransfer();
   const fire = (el: Element, type: string) => el.dispatchEvent(dragEvent(type, el, data));
+  const wait = (el: Element, ms = 0) => (timing.followPointer ? pointerReaches(el, ms) : delay(ms));
 
-  await delay(timing.grabMs ?? 0);
+  await wait(source, timing.grabMs);
   if (!fire(source, "dragstart")) return { dropped: false, refused: true };
-  await delay(timing.moveMs ?? 0);
+  await wait(target, timing.moveMs);
   data.dropEffect = initialDropEffect(data.effectAllowed);
   fire(target, "dragenter");
   // A target accepts by cancelling dragover with an effect the source allows; only then does it get the drop.
@@ -55,62 +62,15 @@ export async function dragAndDrop(source: Element, target: Element, timing: Drag
   return { dropped: accepted, refused: false };
 }
 
-/* The effect a browser proposes over a target, from what the source allows (HTML's drag and drop model). */
-function initialDropEffect(allowed: string): DataTransfer["dropEffect"] {
-  if (allowed === "none") return "none";
-  if (allowed === "move" || allowed === "linkMove") return "move";
-  if (allowed === "link") return "link";
-
-  return "copy";
-}
-
-function allows(allowed: string, effect: string): boolean {
-  if (effect === "none") return false;
-
-  return allowed === "all" || allowed === "uninitialized" || allowed.toLowerCase().includes(effect);
-}
-
+/* A DragEvent where there is one (jsdom has none), carrying our transfer in place of the frozen native one. */
 function dragEvent(type: string, el: Element, dataTransfer: DataTransfer): Event {
   const at = visibleCenter(el);
   const init = { bubbles: true, cancelable: true, composed: true, clientX: at.x, clientY: at.y };
-  // jsdom lacks DragEvent (and DragEvent only takes a real DataTransfer); a
-  // MouseEvent with the transfer defined on it reads the same to a handler.
-  const native = typeof DragEvent === "function" && typeof DataTransfer === "function" && dataTransfer instanceof DataTransfer;
-  const event = native ? new DragEvent(type, { ...init, dataTransfer }) : new MouseEvent(type, init);
+  const event = typeof DragEvent === "function" ? new DragEvent(type, init) : new MouseEvent(type, init);
 
-  if (!(event as DragEvent).dataTransfer) Object.defineProperty(event, "dataTransfer", { value: dataTransfer });
+  Object.defineProperty(event, "dataTransfer", { value: dataTransfer });
 
   return event;
-}
-
-/** A real `DataTransfer` where there is one, else a stand-in with the same string API. */
-function createDataTransfer(): DataTransfer {
-  try {
-    return new DataTransfer();
-  } catch {
-    return memoryDataTransfer();
-  }
-}
-
-function memoryDataTransfer(): DataTransfer {
-  const store = new Map<string, string>();
-
-  return {
-    dropEffect: "none",
-    effectAllowed: "all",
-    get types() {
-      return [...store.keys()];
-    },
-    getData: (format: string) => store.get(format) ?? "",
-    setData: (format: string, value: string) => {
-      store.set(format, value);
-    },
-    clearData: (format?: string) => {
-      if (format) store.delete(format);
-      else store.clear();
-    },
-    setDragImage: () => undefined,
-  } as unknown as DataTransfer;
 }
 
 function delay(ms: number): Promise<void> {

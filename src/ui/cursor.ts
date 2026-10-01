@@ -16,7 +16,7 @@
  */
 import { CURSOR_CSS } from "./styles.js";
 import { visibleCenter } from "../dom/visible-point.js";
-import { POINTER_TRAVEL_MS } from "../timing.js";
+import { POINTER_LANDED, POINTER_TRAVEL_MS } from "../timing.js";
 import { createCarrier } from "./ghost.js";
 import { createShadowHost } from "./host.js";
 
@@ -107,6 +107,7 @@ export function createCursor(options: CursorOptions = {}): Cursor {
   const land = () => {
     traveling = false;
     if (target) carrier.arrive(target);
+    if (target) window.dispatchEvent(new CustomEvent(POINTER_LANDED, { detail: target }));
     ping();
   };
 

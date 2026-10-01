@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { dragAndDrop, VISIBLE_DRAG } from "../src/dom/drag.js";
 import { createAgentVisualizer } from "../src/ui/index.js";
 import { cursorAt, fakeRect, stubRaf } from "./helpers.js";
 import type { AgentStep, ToolCall } from "../src/types.js";
@@ -62,6 +63,29 @@ describe("visualizer — drag", () => {
     vi.advanceTimersByTime(1200);
 
     expect(cursorAt()).toEqual({ x: 360, y: 684 });
+    viz.dispose();
+  });
+
+  it("drops when the pointer lets the copy go, even behind a busy tour", async () => {
+    const viz = createAgentVisualizer({ cursor: true, chips: false });
+    const busy = placed("button", 600, 20, 100, 40);
+    const card = placed("button", 10, 20, 100, 40);
+    const column = placed("section", 300, 20, 120, 400);
+    let dropped = false;
+
+    card.draggable = true;
+    column.addEventListener("dragover", (e) => e.preventDefault());
+    column.addEventListener("drop", () => { dropped = true; });
+    viz.highlight(busy); // the tour is busy with something else first
+    viz.drag(card, column);
+    const drag = dragAndDrop(card, column, VISIBLE_DRAG);
+
+    await vi.advanceTimersByTimeAsync(900); // an empty tour would have dropped by now
+    expect(dropped).toBe(false);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(dropped).toBe(true);
+    expect(ghost()).toBeNull();
+    expect((await drag).dropped).toBe(true);
     viz.dispose();
   });
 
