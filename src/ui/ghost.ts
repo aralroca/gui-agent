@@ -140,7 +140,8 @@ function inertCopy(node: Node): Node | null {
 /* What a field shows now, not what its markup started with. */
 function copyFieldState(from: Element, to: Element): void {
   if (from instanceof HTMLInputElement && to instanceof HTMLInputElement) {
-    to.value = from.value;
+    // A file input only takes "" as its value; its look does not depend on it.
+    if (from.type !== "file") to.value = from.value;
     to.checked = from.checked;
   } else if ((from instanceof HTMLTextAreaElement || from instanceof HTMLSelectElement) && (to instanceof HTMLTextAreaElement || to instanceof HTMLSelectElement)) {
     to.value = from.value;

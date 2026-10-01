@@ -155,7 +155,9 @@ describe("drag ghost", () => {
     const card = placed("div", 10, 20, 100, 40);
     const column = placed("section", 300, 20, 120, 400);
 
-    card.innerHTML = `<input value="old"><input type="checkbox"><select><option>a</option><option>b</option></select>`;
+    card.innerHTML = `<input value="old"><input type="checkbox"><select><option>a</option><option>b</option></select><input type="file">`;
+    // A chosen file: its value is non-empty and may only be set to "".
+    Object.defineProperty(card.children[3], "value", { get: () => "C:\\fakepath\\a.txt", set: (v: string) => { if (v) throw new DOMException("", "InvalidStateError"); } });
     (card.children[0] as HTMLInputElement).value = "edited";
     (card.children[1] as HTMLInputElement).checked = true;
     (card.children[2] as HTMLSelectElement).value = "b";
