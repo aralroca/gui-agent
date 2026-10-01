@@ -104,10 +104,17 @@ export function createCursor(options: CursorOptions = {}): Cursor {
     ripple.classList.add("ping");
   };
 
-  const land = () => {
+  // A visit ends when the pointer lands, or when the tour sends it on (or away)
+  // first: either way what waits on it (a drag, the copy it carries) goes on.
+  const finishVisit = () => {
     traveling = false;
-    if (target) carrier.arrive(target);
-    if (target) window.dispatchEvent(new CustomEvent(POINTER_LANDED, { detail: target }));
+    if (!target) return;
+    carrier.arrive(target);
+    window.dispatchEvent(new CustomEvent(POINTER_LANDED, { detail: target }));
+  };
+
+  const land = () => {
+    finishVisit();
     ping();
   };
 
@@ -150,6 +157,7 @@ export function createCursor(options: CursorOptions = {}): Cursor {
   };
 
   const hide = () => {
+    if (traveling) finishVisit();
     carrier.letGo();
     looping = false;
     traveling = false;
@@ -181,6 +189,7 @@ export function createCursor(options: CursorOptions = {}): Cursor {
       if (typeof document === "undefined" || !el.isConnected) return;
       const shown = ensurePoint();
 
+      if (traveling && target !== el) finishVisit();
       carrier.depart(el, x, y);
       beginTravel(el);
       shown.classList.add("on");

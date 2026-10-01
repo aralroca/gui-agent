@@ -85,6 +85,17 @@ describe("dragAndDrop", () => {
     }
   });
 
+  it("keys data formats as a browser does: \"text\" reads back as text/plain", async () => {
+    const { card, done } = board();
+    let read = "";
+
+    card.addEventListener("dragstart", (e) => (e as DragEvent).dataTransfer!.setData("Text", card.id));
+    done.addEventListener("drop", (e) => { read = (e as DragEvent).dataTransfer!.getData("text/plain"); });
+    await dragAndDrop(card, done);
+
+    expect(read).toBe("card");
+  });
+
   it("stops when the source cancels dragstart", async () => {
     const { card, done, seen } = board();
 

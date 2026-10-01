@@ -89,6 +89,23 @@ describe("visualizer — drag", () => {
     viz.dispose();
   });
 
+  it("does not stall when a short glow dwell sends the pointer on before it lands", async () => {
+    const viz = createAgentVisualizer({ cursor: true, chips: false, glowDwell: 200 });
+    const card = placed("button", 10, 20, 100, 40);
+    const column = placed("section", 300, 20, 120, 400);
+    let dropped = false;
+
+    column.addEventListener("dragover", (e) => e.preventDefault());
+    column.addEventListener("drop", () => { dropped = true; });
+    viz.drag(card, column);
+    const drag = dragAndDrop(card, column, VISIBLE_DRAG);
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(dropped).toBe(true);
+    await drag;
+    viz.dispose();
+  });
+
   it("viz.drag shows the same drag for a producer tool", () => {
     const viz = createAgentVisualizer({ cursor: true, chips: false });
     const card = placed("button", 10, 20, 100, 40);

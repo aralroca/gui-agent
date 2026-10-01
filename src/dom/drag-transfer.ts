@@ -5,6 +5,15 @@
  * it. This one keeps the string data and lets the effects be negotiated as a
  * browser does (HTML's drag and drop processing model).
  */
+/* Formats as a native DataTransfer keys them: lower case, "text" and "url" as their MIME types. */
+const ALIASES: Record<string, string> = { text: "text/plain", url: "text/uri-list" };
+
+const formatOf = (format: string) => {
+  const lower = format.toLowerCase();
+
+  return ALIASES[lower] ?? lower;
+};
+
 export function createDragTransfer(): DataTransfer {
   const store = new Map<string, string>();
 
@@ -17,12 +26,12 @@ export function createDragTransfer(): DataTransfer {
     },
     files: [],
     items: [],
-    getData: (format: string) => store.get(format) ?? "",
+    getData: (format: string) => store.get(formatOf(format)) ?? "",
     setData: (format: string, value: string) => {
-      store.set(format, value);
+      store.set(formatOf(format), value);
     },
     clearData: (format?: string) => {
-      if (format) store.delete(format);
+      if (format) store.delete(formatOf(format));
       else store.clear();
     },
     setDragImage: () => undefined,

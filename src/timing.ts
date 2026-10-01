@@ -11,7 +11,7 @@ export const POINTER_TRAVEL_MS = 380;
 /** Minimum ms the glow (and so the pointer) stays on a target before the next queued one. */
 export const GLOW_DWELL_MS = 500;
 
-/** Fired on `window` with the element as `detail` when the visualizer's pointer lands on it. */
+/** Fired on `window` with the element as `detail` when the visualizer's pointer lands on it, or the tour moves it on first. */
 export const POINTER_LANDED = "gui-agent:pointer-landed";
 
 /** The longest a drag waits for a pointer that may never reach its target (it left the page). */
