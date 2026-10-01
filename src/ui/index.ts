@@ -18,6 +18,7 @@ import { createHighlighter } from "./highlight.js";
 import type { BackdropOptions } from "./highlight.js";
 import type { LabelValue } from "./labels.js";
 import type { AgentStep, DomTargetEvent, GuiAgentOptions } from "../types.js";
+import { visitScheduled } from "../timing.js";
 
 export { DEFAULT_LABELS, humanizeToolName } from "./labels.js";
 export type { LabelValue } from "./labels.js";
@@ -136,7 +137,11 @@ export function createAgentVisualizer(options: AgentVisualizerOptions = {}): Age
 
   // A drag tours its source, then its target, with the pointer carrying a copy between them.
   const showTarget = ({ element, to }: Pick<DomTargetEvent, "element" | "to">) => {
-    if (to) pointer?.carry(element, to);
+    if (to && pointer) {
+      pointer.carry(element, to);
+      visitScheduled(element);
+      visitScheduled(to);
+    }
     highlighter.highlight(element);
     if (to) highlighter.highlight(to);
   };

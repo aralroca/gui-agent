@@ -189,3 +189,35 @@ describe("drag ghost", () => {
     viz.dispose();
   });
 });
+
+describe("VISIBLE_DRAG with no tour", () => {
+  beforeEach(() => {
+    stubRaf();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    document.body.innerHTML = "";
+  });
+
+  it("keeps the empty-tour pace when the pointer left over from an earlier tour is idle", async () => {
+    const viz = createAgentVisualizer({ cursor: true, chips: false });
+    const other = placed("button", 600, 20, 100, 40);
+    const card = placed("button", 10, 20, 100, 40);
+    const column = placed("section", 300, 20, 120, 400);
+    let dropped = false;
+
+    viz.highlight(other);
+    await vi.advanceTimersByTimeAsync(3000); // that tour is over; the pointer's host stays
+    column.addEventListener("dragover", (e) => e.preventDefault());
+    column.addEventListener("drop", () => { dropped = true; });
+    const drag = dragAndDrop(card, column, VISIBLE_DRAG);
+
+    await vi.advanceTimersByTimeAsync(900);
+    expect(dropped).toBe(true);
+    await drag;
+    viz.dispose();
+  });
+});

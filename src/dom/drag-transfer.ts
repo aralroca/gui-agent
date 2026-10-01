@@ -25,7 +25,10 @@ export function createDragTransfer(): DataTransfer {
       return [...store.keys()];
     },
     files: [],
-    items: [],
+    // The string items a native transfer lists for its data.
+    get items() {
+      return [...store].map(([type, value]) => ({ kind: "string", type, getAsString: (cb: (s: string) => void) => cb(value), getAsFile: () => null }));
+    },
     getData: (format: string) => store.get(formatOf(format)) ?? "",
     setData: (format: string, value: string) => {
       store.set(formatOf(format), value);

@@ -17,14 +17,28 @@ export const POINTER_LANDED = "gui-agent:pointer-landed";
 /** The longest a drag waits for a pointer that may never reach its target (it left the page). */
 const POINTER_WAIT_CAP_MS = 8000;
 
-const pointerShown = () => typeof document !== "undefined" && !!document.querySelector("[data-gui-agent-cursor]");
+/* The visits the pointer has queued and not finished: only those are worth waiting for. */
+const scheduled = new Map<Element, number>();
+
+/** The visualizer queued a pointer visit to `el`. */
+export function visitScheduled(el: Element): void {
+  scheduled.set(el, (scheduled.get(el) ?? 0) + 1);
+}
+
+/** A pointer visit to `el` ended (landed, cut short); with `null`, the tour ended and every visit with it. */
+export function visitEnded(el: Element | null): void {
+  if (!el) scheduled.clear();
+  else if ((scheduled.get(el) ?? 0) > 1) scheduled.set(el, scheduled.get(el)! - 1);
+  else scheduled.delete(el);
+}
 
 /**
- * Wait until the pointer lands on `el`; with no pointer on the page, wait
- * `ms` instead — what the pointer would take with an empty tour.
+ * Wait until the pointer lands on `el`; when no visit to it is queued (no
+ * pointer, or a drag no tour shows), wait `ms` instead — what the pointer
+ * would take with an empty tour.
  */
 export function pointerReaches(el: Element, ms: number): Promise<void> {
-  if (!pointerShown()) return new Promise((resolve) => setTimeout(resolve, ms));
+  if (!scheduled.has(el)) return new Promise((resolve) => setTimeout(resolve, ms));
 
   return new Promise((resolve) => {
     const done = () => {

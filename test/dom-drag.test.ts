@@ -96,6 +96,16 @@ describe("dragAndDrop", () => {
     expect(read).toBe("card");
   });
 
+  it("lists the data as string items, as a native transfer does", async () => {
+    const { card, done } = board();
+    let items: string[] = [];
+
+    done.addEventListener("drop", (e) => { items = Array.from((e as DragEvent).dataTransfer!.items, (item) => `${item.kind}:${item.type}`); });
+    await dragAndDrop(card, done);
+
+    expect(items).toEqual(["string:text/plain"]);
+  });
+
   it("stops when the source cancels dragstart", async () => {
     const { card, done, seen } = board();
 

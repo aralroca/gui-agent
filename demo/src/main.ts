@@ -230,7 +230,8 @@ const viz = createAgentVisualizer({
 
 // The ref of the snapshot line that names `text` (a card's title, a column's name).
 function refNamed(req: Parameters<Llm>[0], text: string): string | undefined {
-  const lines = req.messages.flatMap((m) => m.content.split("\n"));
+  // Only the page outline's lines (they carry a ref), not the goal that names the card too.
+  const lines = req.messages.flatMap((m) => m.content.split("\n")).filter((l) => /\[e\d+\]/.test(l));
   const line = lines.find((l) => l.toLowerCase().includes(`"${text.toLowerCase()}`));
 
   return line?.match(/\[(e\d+)\]/)?.[1];
