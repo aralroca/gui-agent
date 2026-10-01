@@ -34,7 +34,7 @@ export interface DragTiming {
 export const VISIBLE_DRAG: Required<DragTiming> = { grabMs: POINTER_TRAVEL_MS, moveMs: GLOW_DWELL_MS, followPointer: true };
 
 export interface DragResult {
-  /** The target accepted the drag and received `drop`. */
+  /** The target accepted the drag and handled its `drop` (cancelled it). */
   dropped: boolean;
   /** The source cancelled `dragstart` (it can't be dragged right now). */
   refused: boolean;
@@ -54,12 +54,14 @@ export async function dragAndDrop(source: Element, target: Element, timing: Drag
   // A target accepts by cancelling dragover with an effect the source allows; only then does it get the drop.
   const accepted = !fire(target, "dragover") && allows(data.effectAllowed, data.dropEffect);
 
-  if (accepted) fire(target, "drop");
-  else fire(target, "dragleave");
-  if (!accepted) data.dropEffect = "none";
+  // The target handles the drop by cancelling it; a drop it lets through moved nothing.
+  const dropped = accepted && !fire(target, "drop");
+
+  if (!accepted) fire(target, "dragleave");
+  if (!dropped) data.dropEffect = "none";
   fire(source, "dragend");
 
-  return { dropped: accepted, refused: false };
+  return { dropped, refused: false };
 }
 
 /* A DragEvent where there is one (jsdom has none), carrying our transfer in place of the frozen native one. */

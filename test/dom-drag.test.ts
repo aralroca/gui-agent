@@ -25,6 +25,7 @@ function board({ accept = true } = {}) {
     if (accept) e.preventDefault();
   });
   done.addEventListener("drop", (e) => {
+    e.preventDefault();
     seen.push("drop");
     done.appendChild(document.getElementById((e as DragEvent).dataTransfer!.getData("text/plain"))!);
   });
@@ -115,6 +116,37 @@ describe("dragAndDrop", () => {
     await dragAndDrop(card, done);
 
     expect(read).toBe("via-items");
+  });
+
+  it("a drop the target lets through moves nothing: dragend sees none", async () => {
+    const { card, done } = board();
+    let ended = "";
+
+    done.addEventListener("drop", (e) => e.stopImmediatePropagation(), { capture: true });
+    card.addEventListener("dragstart", (e) => { (e as DragEvent).dataTransfer!.effectAllowed = "move"; });
+    card.addEventListener("dragend", (e) => { ended = (e as DragEvent).dataTransfer!.dropEffect; });
+    const result = await dragAndDrop(card, done);
+
+    expect(result.dropped).toBe(false);
+    expect(ended).toBe("none");
+  });
+
+  it("keeps items live: added, indexed, counted and removed through the same list", async () => {
+    document.body.innerHTML = `<div draggable="true" id="s"></div><div id="t"></div>`;
+    const card = document.getElementById("s")!;
+    const done = document.getElementById("t")!;
+    let seen: unknown[] = [];
+
+    card.addEventListener("dragstart", (e) => {
+      const items = (e as DragEvent).dataTransfer!.items;
+      const added = items.add("x", "text/x-a");
+      items.add("y", "text/x-b");
+      items.remove(0);
+      seen = [added?.type, items.length, items[0]?.type, items[1]?.type, items[2]];
+    });
+    await dragAndDrop(card, done);
+
+    expect(seen).toEqual(["text/x-a", 1, "text/x-b", undefined, undefined]);
   });
 
   it("stops when the source cancels dragstart", async () => {

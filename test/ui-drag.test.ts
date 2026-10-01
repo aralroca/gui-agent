@@ -75,7 +75,7 @@ describe("visualizer — drag", () => {
 
     card.draggable = true;
     column.addEventListener("dragover", (e) => e.preventDefault());
-    column.addEventListener("drop", () => { dropped = true; });
+    column.addEventListener("drop", (e) => { e.preventDefault(); dropped = true; });
     viz.highlight(busy); // the tour is busy with something else first
     viz.drag(card, column);
     const drag = dragAndDrop(card, column, VISIBLE_DRAG);
@@ -96,7 +96,7 @@ describe("visualizer — drag", () => {
     let dropped = false;
 
     column.addEventListener("dragover", (e) => e.preventDefault());
-    column.addEventListener("drop", () => { dropped = true; });
+    column.addEventListener("drop", (e) => { e.preventDefault(); dropped = true; });
     viz.drag(card, column);
     const drag = dragAndDrop(card, column, VISIBLE_DRAG);
 
@@ -212,7 +212,7 @@ describe("VISIBLE_DRAG with no tour", () => {
     viz.highlight(other);
     await vi.advanceTimersByTimeAsync(3000); // that tour is over; the pointer's host stays
     column.addEventListener("dragover", (e) => e.preventDefault());
-    column.addEventListener("drop", () => { dropped = true; });
+    column.addEventListener("drop", (e) => { e.preventDefault(); dropped = true; });
     const drag = dragAndDrop(card, column, VISIBLE_DRAG);
 
     await vi.advanceTimersByTimeAsync(900);

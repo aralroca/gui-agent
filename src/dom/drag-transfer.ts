@@ -16,6 +16,7 @@ const formatOf = (format: string) => {
 
 export function createDragTransfer(): DataTransfer {
   const store = new Map<string, string>();
+  const items = itemList(store);
 
   return {
     dropEffect: "none",
@@ -26,9 +27,7 @@ export function createDragTransfer(): DataTransfer {
     },
     files: [],
     // The string items a native transfer lists for its data, read and written through the same store.
-    get items() {
-      return itemList(store);
-    },
+    items,
     getData: (format: string) => store.get(formatOf(format)) ?? "",
     setData: (format: string, value: string) => {
       store.set(formatOf(format), value);
@@ -41,18 +40,31 @@ export function createDragTransfer(): DataTransfer {
   } as unknown as DataTransfer;
 }
 
+/* DataTransferItemList over the store: live length, indices and iteration; add() returns the item. */
 function itemList(store: Map<string, string>) {
-  const entries = [...store];
-  const items = entries.map(([type, value]) => ({ kind: "string", type, getAsString: (cb: (s: string) => void) => cb(value), getAsFile: () => null }));
-
-  return Object.assign(items, {
-    add: (data: string, type: string) => {
-      store.set(formatOf(type), data);
+  const item = ([type, value]: [string, string]) => ({ kind: "string", type, getAsString: (cb: (s: string) => void) => cb(value), getAsFile: () => null });
+  const at = (index: number) => [...store][index];
+  const list = {
+    get length() {
+      return store.size;
     },
-    remove: (index: number) => {
-      if (entries[index]) store.delete(entries[index][0]);
+    add(data: string, type: string) {
+      store.set(formatOf(type), data);
+
+      return item([formatOf(type), data]);
+    },
+    remove(index: number) {
+      const entry = at(index);
+      if (entry) store.delete(entry[0]);
     },
     clear: () => store.clear(),
+    *[Symbol.iterator]() {
+      for (const entry of store) yield item(entry);
+    },
+  };
+
+  return new Proxy(list, {
+    get: (target, key) => (typeof key === "string" && /^\d+$/.test(key) ? at(Number(key)) && item(at(Number(key))!) : Reflect.get(target, key)),
   });
 }
 
