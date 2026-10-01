@@ -150,6 +150,44 @@ describe("drag ghost", () => {
     viz.dispose();
   });
 
+  it("shows fields as they are on screen, not as their markup started", () => {
+    const viz = createAgentVisualizer({ cursor: true, chips: false });
+    const card = placed("div", 10, 20, 100, 40);
+    const column = placed("section", 300, 20, 120, 400);
+
+    card.innerHTML = `<input value="old"><input type="checkbox"><select><option>a</option><option>b</option></select>`;
+    (card.children[0] as HTMLInputElement).value = "edited";
+    (card.children[1] as HTMLInputElement).checked = true;
+    (card.children[2] as HTMLSelectElement).value = "b";
+    viz.drag(card, column);
+    vi.advanceTimersByTime(600);
+
+    const [text, box, select] = Array.from(ghost()!.children) as [HTMLInputElement, HTMLInputElement, HTMLSelectElement];
+    expect([text.value, box.checked, select.value]).toEqual(["edited", true, "b"]);
+    viz.dispose();
+  });
+
+  it("carries chained drags (a to b, then b to c) each in turn", () => {
+    const viz = createAgentVisualizer({ cursor: true, chips: false });
+    const a = placed("button", 10, 20, 100, 40);
+    const b = placed("button", 300, 20, 100, 40);
+    const c = placed("button", 600, 20, 100, 40);
+    const carried: (string | undefined)[] = [];
+
+    a.textContent = "A";
+    b.textContent = "B";
+    viz.drag(a, b);
+    viz.drag(b, c);
+    for (let t = 0; t < 4000; t += 50) {
+      vi.advanceTimersByTime(50);
+      const text = ghost()?.textContent;
+      if (text && carried.at(-1) !== text) carried.push(text);
+    }
+
+    expect(carried).toEqual(["A", "B"]);
+    viz.dispose();
+  });
+
   it("carries each of two drags asked for back to back, in order", () => {
     const viz = createAgentVisualizer({ cursor: true, chips: false });
     const first = placed("button", 10, 20, 100, 40);

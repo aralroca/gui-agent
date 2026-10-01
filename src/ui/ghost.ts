@@ -37,6 +37,7 @@ export function createCarrier(): Carrier {
 
   // The tour reached a later drag's source (an earlier one's target never showed): skip to it.
   const catchUp = (el: Element) => {
+    if (drags[0]?.to === el) return; // the current drag's own trip (its target may start the next one)
     const at = drags.findIndex((drag) => drag.from === el);
 
     if (at > 0) drags = drags.slice(at);
@@ -131,8 +132,19 @@ function inertCopy(node: Node): Node | null {
     const inert = inertCopy(child);
     if (inert) copy.appendChild(inert);
   });
+  copyFieldState(node, copy);
 
   return copy;
+}
+
+/* What a field shows now, not what its markup started with. */
+function copyFieldState(from: Element, to: Element): void {
+  if (from instanceof HTMLInputElement && to instanceof HTMLInputElement) {
+    to.value = from.value;
+    to.checked = from.checked;
+  } else if ((from instanceof HTMLTextAreaElement || from instanceof HTMLSelectElement) && (to instanceof HTMLTextAreaElement || to instanceof HTMLSelectElement)) {
+    to.value = from.value;
+  }
 }
 
 /* Copy each node's computed style onto its clone, walking both trees together. */
