@@ -122,6 +122,9 @@ const isLive = (el: Element) => el.localName.includes("-") || LIVE.has(el.localN
 function inertCopy(node: Node): Node | null {
   if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent ?? "");
   if (!(node instanceof Element)) return null;
+  // Stylesheets would restyle the page itself (the copy already has its computed look): an empty
+  // stand-in keeps the children paired with the source's for inlineStyles, and takes its display: none.
+  if (node.localName === "style" || (node.localName === "link" && /stylesheet/i.test(node.getAttribute("rel") ?? ""))) return document.createElement("span");
   if (isLive(node)) return document.createElement("div");
   const copy = document.createElementNS(node.namespaceURI, node.localName);
 

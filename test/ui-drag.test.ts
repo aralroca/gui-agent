@@ -218,13 +218,14 @@ describe("drag ghost", () => {
     const card = placed("div", 10, 20, 100, 40);
     const column = placed("section", 300, 20, 120, 400);
 
-    card.innerHTML = `<span id="t" onclick="alert(1)">Fix login</span><live-badge></live-badge><iframe src="about:blank"></iframe>`;
+    card.innerHTML = `<span id="t" onclick="alert(1)">Fix login</span><live-badge></live-badge><iframe src="about:blank"></iframe><style>p{}</style><link rel="stylesheet" href="x.css">`;
     connected.mockClear();
     viz.drag(card, column);
     vi.advanceTimersByTime(600);
 
     expect(ghost()?.textContent).toBe("Fix login");
-    expect(ghost()?.querySelector("live-badge, iframe, [id], [onclick]")).toBeNull();
+    expect(ghost()?.querySelector("live-badge, iframe, [id], [onclick], style, link")).toBeNull();
+    expect((ghost()!.lastElementChild as HTMLElement).style.display).toBe("none"); // the stylesheet's stand-in
     expect(connected).not.toHaveBeenCalled();
     viz.dispose();
   });
