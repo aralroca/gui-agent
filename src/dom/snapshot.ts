@@ -163,7 +163,6 @@ function roleOf(el: Element): string {
     return "textbox";
   }
   if (el.getAttribute("contenteditable") != null) return "textbox";
-  if (isDropTarget(el)) return "droptarget";
   return "control";
 }
 
@@ -240,6 +239,7 @@ function stateOf(el: Element): string | undefined {
   const flags: string[] = [];
   if ((el as HTMLInputElement).disabled) flags.push("disabled");
   if (el.getAttribute("draggable") === "true") flags.push("draggable");
+  if (isDropTarget(el)) flags.push("droptarget");
   const tag = el.tagName.toLowerCase();
   if (tag === "input") {
     const input = el as HTMLInputElement;

@@ -9,6 +9,8 @@
  * (does not `preventDefault()` its `dragover`) gets no `drop`, exactly as with
  * a real mouse.
  */
+import { GLOW_DWELL_MS, POINTER_TRAVEL_MS } from "../timing.js";
+import { visibleCenter } from "./visible-point.js";
 
 export interface DragTiming {
   /** Ms to hold the source before picking it up (the pointer travels to it). Default 0. */
@@ -18,11 +20,12 @@ export interface DragTiming {
 }
 
 /**
- * The pace the `/ui` visualizer's pointer moves at: it lands on the source,
- * then carries a copy of it to the target. Pass it to {@link dragAndDrop}
- * when the drag should be watched.
+ * The pace of the `/ui` visualizer's pointer (with its default `glowDwell`):
+ * it picks the source up when it lands on it and drops it when it lands on
+ * the target, so the page moves the card as the copy is let go. Pass it to
+ * {@link dragAndDrop} when the drag should be watched.
  */
-export const VISIBLE_DRAG: Required<DragTiming> = { grabMs: 450, moveMs: 700 };
+export const VISIBLE_DRAG: Required<DragTiming> = { grabMs: POINTER_TRAVEL_MS, moveMs: GLOW_DWELL_MS };
 
 export interface DragResult {
   /** The target accepted the drag and received `drop`. */
@@ -51,14 +54,8 @@ export async function dragAndDrop(source: Element, target: Element, timing: Drag
 }
 
 function dragEvent(type: string, el: Element, dataTransfer: DataTransfer): Event {
-  const rect = el.getBoundingClientRect();
-  const init = {
-    bubbles: true,
-    cancelable: true,
-    composed: true,
-    clientX: rect.left + rect.width / 2,
-    clientY: rect.top + rect.height / 2,
-  };
+  const at = visibleCenter(el);
+  const init = { bubbles: true, cancelable: true, composed: true, clientX: at.x, clientY: at.y };
   // jsdom lacks DragEvent (and DragEvent only takes a real DataTransfer); a
   // MouseEvent with the transfer defined on it reads the same to a handler.
   const native = typeof DragEvent === "function" && typeof DataTransfer === "function" && dataTransfer instanceof DataTransfer;

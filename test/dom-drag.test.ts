@@ -132,6 +132,24 @@ describe("snapshot of a board", () => {
     document.getElementById("card")!.outerHTML = `<div draggable="true" id="card">Fix login</div>`;
 
     expect(snapshotter.snapshot()).toMatch(/\[e\d+\] control "Fix login" draggable/);
-    expect(snapshotter.snapshot()).toMatch(/\[e\d+\] droptarget "Done"/);
+    expect(snapshotter.snapshot()).toMatch(/\[e\d+\] control "Done" droptarget/);
+  });
+});
+
+describe("snapshot of drop targets with a role of their own", () => {
+  it("keeps the role and flags it droptarget", () => {
+    document.body.innerHTML = `<ul role="list" aria-label="Done" aria-dropeffect="move"></ul>`;
+
+    expect(new DomSnapshotter().snapshot()).toMatch(/\[e\d+\] list "Done" droptarget/);
+  });
+});
+
+describe("VISIBLE_DRAG", () => {
+  it("picks up when the pointer lands on the source and drops when it lands on the target", async () => {
+    const { GLOW_DWELL_MS, POINTER_TRAVEL_MS } = await import("../src/timing.js");
+    const { VISIBLE_DRAG } = await import("../src/dom/drag.js");
+
+    expect(VISIBLE_DRAG.grabMs).toBe(POINTER_TRAVEL_MS);
+    expect(VISIBLE_DRAG.grabMs + VISIBLE_DRAG.moveMs).toBe(GLOW_DWELL_MS + POINTER_TRAVEL_MS);
   });
 });

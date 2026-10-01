@@ -53,6 +53,18 @@ describe("visualizer — drag", () => {
     viz.dispose();
   });
 
+  it("drops on the part of a tall column that is on screen, never below the fold", () => {
+    const viz = createAgentVisualizer({ cursor: true, chips: false });
+    const card = placed("button", 10, 20, 100, 40);
+    const column = placed("section", 300, 600, 120, 2000); // jsdom's viewport is 1024 x 768
+
+    viz.drag(card, column);
+    vi.advanceTimersByTime(1200);
+
+    expect(cursorAt()).toEqual({ x: 360, y: 684 });
+    viz.dispose();
+  });
+
   it("viz.drag shows the same drag for a producer tool", () => {
     const viz = createAgentVisualizer({ cursor: true, chips: false });
     const card = placed("button", 10, 20, 100, 40);
@@ -64,5 +76,36 @@ describe("visualizer — drag", () => {
     expect(ghost()).not.toBeNull();
     viz.dispose();
     expect(ghost()).toBeNull();
+  });
+});
+
+describe("drag ghost", () => {
+  beforeEach(() => {
+    stubRaf();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    document.body.innerHTML = "";
+  });
+
+  it("is an inert look-alike: custom elements and frames do not come alive, ids and handlers are dropped", () => {
+    const connected = vi.fn();
+    customElements.define("live-badge", class extends HTMLElement { connectedCallback() { connected(); } });
+    const viz = createAgentVisualizer({ cursor: true, chips: false });
+    const card = placed("div", 10, 20, 100, 40);
+    const column = placed("section", 300, 20, 120, 400);
+
+    card.innerHTML = `<span id="t" onclick="alert(1)">Fix login</span><live-badge></live-badge><iframe src="about:blank"></iframe>`;
+    connected.mockClear();
+    viz.drag(card, column);
+    vi.advanceTimersByTime(600);
+
+    expect(ghost()?.textContent).toBe("Fix login");
+    expect(ghost()?.querySelector("live-badge, iframe, [id], [onclick]")).toBeNull();
+    expect(connected).not.toHaveBeenCalled();
+    viz.dispose();
   });
 });

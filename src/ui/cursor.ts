@@ -15,6 +15,8 @@
  * teleports, and CSS suppresses the ripple.
  */
 import { CURSOR_CSS } from "./styles.js";
+import { visibleCenter } from "../dom/visible-point.js";
+import { POINTER_TRAVEL_MS } from "../timing.js";
 import { createCarrier } from "./ghost.js";
 import { createShadowHost } from "./host.js";
 
@@ -24,7 +26,7 @@ export interface CursorOptions {
 }
 
 export interface Cursor {
-  /** Travel to an element's center, rippling on arrival. */
+  /** Travel to the center of the element's on-screen part, rippling on arrival. */
   moveTo(el: Element): void;
   /** Drag: the pointer's trip from `from` to `to` carries a copy of `from`. */
   carry(from: Element, to: Element): void;
@@ -41,7 +43,7 @@ export interface Cursor {
  * ripple, which only fires on arrival, never played. Timing it makes a slow
  * frame budget choppier, never longer.
  */
-const TRAVEL_MS = 380;
+const TRAVEL_MS = POINTER_TRAVEL_MS;
 
 /** Cubic ease-out: quick departure, soft landing — how a hand moves a mouse. */
 const easeOut = (t: number): number => 1 - (1 - t) ** 3;
@@ -95,12 +97,6 @@ export function createCursor(options: CursorOptions = {}): Cursor {
     return point;
   };
 
-  const centerOf = (el: Element): { x: number; y: number } => {
-    const rect = el.getBoundingClientRect();
-
-    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-  };
-
   const ping = () => {
     if (!ripple) return;
     ripple.classList.remove("ping");
@@ -130,7 +126,7 @@ export function createCursor(options: CursorOptions = {}): Cursor {
   // keeps the pointer pinned while the page scrolls underneath.
   const advance = () => {
     if (!point || !target?.isConnected) return;
-    const dest = centerOf(target);
+    const dest = visibleCenter(target);
     const progress = travelMs ? Math.min(1, (Date.now() - startedAt) / travelMs) : 1;
     const eased = easeOut(progress);
 

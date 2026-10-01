@@ -55,13 +55,12 @@ export function createCarrier(): Carrier {
 
 export function createGhost(source: Element, grabX: number, grabY: number): Ghost {
   const rect = source.getBoundingClientRect();
-  const copy = source.cloneNode(true) as HTMLElement;
+  const copy = inertCopy(source) as HTMLElement;
   const offset = { x: grabX - rect.left, y: grabY - rect.top };
 
   inlineStyles(source, copy);
   copy.setAttribute(GHOST_ATTR, "");
   copy.setAttribute("aria-hidden", "true");
-  copy.removeAttribute("id");
   Object.assign(copy.style, ghostFrame(rect));
   document.body.appendChild(copy);
 
@@ -91,6 +90,31 @@ function ghostFrame(rect: DOMRect): Partial<CSSStyleDeclaration> {
     transition: "none",
     animation: "none",
   };
+}
+
+/* Elements that would come alive in the copy: a defined custom element runs its
+   constructor and lifecycle callbacks, a frame or a media element loads. The
+   copy draws each as a plain box with its look (inlineStyles) and no contents. */
+const LIVE = new Set(["iframe", "frame", "object", "embed", "video", "audio", "canvas", "script", "template", "slot"]);
+
+const isLive = (el: Element) => el.localName.includes("-") || LIVE.has(el.localName);
+
+/* A look-alike of `node` that does nothing: no ids, no inline handlers, nothing live. */
+function inertCopy(node: Node): Node | null {
+  if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent ?? "");
+  if (!(node instanceof Element)) return null;
+  if (isLive(node)) return document.createElement("div");
+  const copy = document.createElementNS(node.namespaceURI, node.localName);
+
+  for (const { name, value } of Array.from(node.attributes)) {
+    if (name !== "id" && !name.startsWith("on")) copy.setAttribute(name, value);
+  }
+  node.childNodes.forEach((child) => {
+    const inert = inertCopy(child);
+    if (inert) copy.appendChild(inert);
+  });
+
+  return copy;
 }
 
 /* Copy each node's computed style onto its clone, walking both trees together. */
