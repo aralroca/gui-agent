@@ -58,6 +58,33 @@ describe("dragAndDrop", () => {
     expect(result.dropped).toBe(false);
   });
 
+  it("negotiates the drop effect: a move-only source reports move to dragend", async () => {
+    const { card, done } = board();
+    let ended = "";
+
+    card.addEventListener("dragstart", (e) => { (e as DragEvent).dataTransfer!.effectAllowed = "move"; });
+    card.addEventListener("dragend", (e) => { ended = (e as DragEvent).dataTransfer!.dropEffect; });
+    await dragAndDrop(card, done);
+
+    expect(ended).toBe("move");
+  });
+
+  it("does not drop where the target sets dropEffect none, or an effect the source does not allow", async () => {
+    for (const effect of ["none", "copy"] as const) {
+      const { card, done, seen } = board();
+      let ended = "";
+
+      card.addEventListener("dragstart", (e) => { (e as DragEvent).dataTransfer!.effectAllowed = "move"; });
+      card.addEventListener("dragend", (e) => { ended = (e as DragEvent).dataTransfer!.dropEffect; });
+      done.addEventListener("dragover", (e) => { (e as DragEvent).dataTransfer!.dropEffect = effect; });
+      const result = await dragAndDrop(card, done);
+
+      expect(result.dropped).toBe(false);
+      expect(seen).not.toContain("drop");
+      expect(ended).toBe("none");
+    }
+  });
+
   it("stops when the source cancels dragstart", async () => {
     const { card, done, seen } = board();
 

@@ -91,6 +91,45 @@ describe("drag ghost", () => {
     document.body.innerHTML = "";
   });
 
+  it("leaves form fields, focus and the pointer alone", () => {
+    const viz = createAgentVisualizer({ cursor: true, chips: false });
+    const card = placed("div", 10, 20, 100, 40);
+    const column = placed("section", 300, 20, 120, 400);
+
+    document.body.insertAdjacentHTML("beforeend", `<form id="f"></form>`);
+    card.innerHTML = `<input name="title" form="f" value="hello" tabindex="0"><span style="pointer-events:auto">x</span>`;
+    viz.drag(card, column);
+    vi.advanceTimersByTime(600);
+
+    const copy = ghost()!;
+    expect(new FormData(document.getElementById("f") as HTMLFormElement).getAll("title")).toEqual(["hello"]);
+    expect(copy.hasAttribute("inert")).toBe(true);
+    expect(copy.querySelector("[name], [form], [tabindex]")).toBeNull();
+    expect((copy.querySelector("span") as HTMLElement).style.pointerEvents).toBe("none");
+    viz.dispose();
+  });
+
+  it("carries each of two drags asked for back to back, in order", () => {
+    const viz = createAgentVisualizer({ cursor: true, chips: false });
+    const first = placed("button", 10, 20, 100, 40);
+    const second = placed("button", 10, 120, 100, 40);
+    const column = placed("section", 300, 20, 120, 400);
+    const carried: (string | undefined)[] = [];
+
+    first.textContent = "First";
+    second.textContent = "Second";
+    viz.drag(first, column);
+    viz.drag(second, column);
+    for (let t = 0; t < 4000; t += 50) {
+      vi.advanceTimersByTime(50);
+      const text = ghost()?.textContent;
+      if (text && carried.at(-1) !== text) carried.push(text);
+    }
+
+    expect(carried).toEqual(["First", "Second"]);
+    viz.dispose();
+  });
+
   it("is an inert look-alike: custom elements and frames do not come alive, ids and handlers are dropped", () => {
     const connected = vi.fn();
     customElements.define("live-badge", class extends HTMLElement { connectedCallback() { connected(); } });

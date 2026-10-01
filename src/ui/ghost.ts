@@ -25,31 +25,43 @@ export interface Carrier {
 
 const GHOST_ATTR = "data-gui-agent-ghost";
 
+/* Drags queue like the glow's tour does: each is carried on its own trip, in order. */
 export function createCarrier(): Carrier {
-  let drag: { from: Element; to: Element } | null = null;
+  let drags: { from: Element; to: Element }[] = [];
   let ghost: Ghost | null = null;
 
-  const letGo = () => {
+  const drop = () => {
     ghost?.remove();
     ghost = null;
-    drag = null;
+  };
+
+  // The tour reached a later drag's source (an earlier one's target never showed): skip to it.
+  const catchUp = (el: Element) => {
+    const at = drags.findIndex((drag) => drag.from === el);
+
+    if (at > 0) drags = drags.slice(at);
   };
 
   return {
     carry(from, to) {
-      letGo();
-      drag = { from, to };
+      drags.push({ from, to });
     },
     depart(el, x, y) {
-      if (drag?.to === el && !ghost) ghost = createGhost(drag.from, x, y);
+      catchUp(el);
+      if (drags[0]?.to === el && !ghost) ghost = createGhost(drags[0].from, x, y);
     },
     arrive(el) {
-      if (ghost && drag?.to === el) letGo();
+      if (!ghost || drags[0]?.to !== el) return;
+      drop();
+      drags.shift();
     },
     follow(x, y) {
       ghost?.follow(x, y);
     },
-    letGo,
+    letGo() {
+      drop();
+      drags = [];
+    },
   };
 }
 
@@ -61,6 +73,9 @@ export function createGhost(source: Element, grabX: number, grabY: number): Ghos
   inlineStyles(source, copy);
   copy.setAttribute(GHOST_ATTR, "");
   copy.setAttribute("aria-hidden", "true");
+  // Nothing in it can be focused, clicked or hit, whatever style it copied.
+  copy.setAttribute("inert", "");
+  copy.querySelectorAll<HTMLElement>("*").forEach((el) => el.style.setProperty("pointer-events", "none"));
   Object.assign(copy.style, ghostFrame(rect));
   document.body.appendChild(copy);
 
@@ -97,6 +112,9 @@ function ghostFrame(rect: DOMRect): Partial<CSSStyleDeclaration> {
    copy draws each as a plain box with its look (inlineStyles) and no contents. */
 const LIVE = new Set(["iframe", "frame", "object", "embed", "video", "audio", "canvas", "script", "template", "slot"]);
 
+/* What would tie a copy to the page: ids, form fields (name, form), focus. */
+const DROPPED = new Set(["id", "name", "form", "for", "tabindex", "autofocus", "contenteditable", "popover", "accesskey"]);
+
 const isLive = (el: Element) => el.localName.includes("-") || LIVE.has(el.localName);
 
 /* A look-alike of `node` that does nothing: no ids, no inline handlers, nothing live. */
@@ -107,7 +125,7 @@ function inertCopy(node: Node): Node | null {
   const copy = document.createElementNS(node.namespaceURI, node.localName);
 
   for (const { name, value } of Array.from(node.attributes)) {
-    if (name !== "id" && !name.startsWith("on")) copy.setAttribute(name, value);
+    if (!DROPPED.has(name) && !name.startsWith("on")) copy.setAttribute(name, value);
   }
   node.childNodes.forEach((child) => {
     const inert = inertCopy(child);

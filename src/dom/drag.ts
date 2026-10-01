@@ -42,15 +42,32 @@ export async function dragAndDrop(source: Element, target: Element, timing: Drag
   await delay(timing.grabMs ?? 0);
   if (!fire(source, "dragstart")) return { dropped: false, refused: true };
   await delay(timing.moveMs ?? 0);
+  data.dropEffect = initialDropEffect(data.effectAllowed);
   fire(target, "dragenter");
-  // A target says it accepts by cancelling dragover; only then does it get the drop.
-  const accepted = !fire(target, "dragover");
+  // A target accepts by cancelling dragover with an effect the source allows; only then does it get the drop.
+  const accepted = !fire(target, "dragover") && allows(data.effectAllowed, data.dropEffect);
 
   if (accepted) fire(target, "drop");
   else fire(target, "dragleave");
+  if (!accepted) data.dropEffect = "none";
   fire(source, "dragend");
 
   return { dropped: accepted, refused: false };
+}
+
+/* The effect a browser proposes over a target, from what the source allows (HTML's drag and drop model). */
+function initialDropEffect(allowed: string): DataTransfer["dropEffect"] {
+  if (allowed === "none") return "none";
+  if (allowed === "move" || allowed === "linkMove") return "move";
+  if (allowed === "link") return "link";
+
+  return "copy";
+}
+
+function allows(allowed: string, effect: string): boolean {
+  if (effect === "none") return false;
+
+  return allowed === "all" || allowed === "uninitialized" || allowed.toLowerCase().includes(effect);
 }
 
 function dragEvent(type: string, el: Element, dataTransfer: DataTransfer): Event {
