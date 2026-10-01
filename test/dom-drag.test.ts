@@ -149,6 +149,18 @@ describe("dragAndDrop", () => {
     expect(seen).toEqual(["text/x-a", 1, "text/x-b", undefined, undefined]);
   });
 
+  it("tells dragend where the drag was let go", async () => {
+    const { card, done } = board();
+    let end = { x: 0, y: 0 };
+
+    card.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 40 }) as DOMRect;
+    done.getBoundingClientRect = () => ({ left: 300, top: 0, width: 100, height: 200 }) as DOMRect;
+    card.addEventListener("dragend", (e) => { end = { x: (e as MouseEvent).clientX, y: (e as MouseEvent).clientY }; });
+    await dragAndDrop(card, done);
+
+    expect(end).toEqual({ x: 350, y: 100 });
+  });
+
   it("stops when the source cancels dragstart", async () => {
     const { card, done, seen } = board();
 

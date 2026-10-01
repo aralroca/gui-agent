@@ -43,7 +43,8 @@ export interface DragResult {
 /** Drag `source` onto `target`, firing the page's own drag and drop handlers. */
 export async function dragAndDrop(source: Element, target: Element, timing: DragTiming = {}): Promise<DragResult> {
   const data = createDragTransfer();
-  const fire = (el: Element, type: string) => el.dispatchEvent(dragEvent(type, el, data));
+  // Events carry where the pointer is: over the element itself, except dragend, sent to the source from where it was let go.
+  const fire = (el: Element, type: string, at = visibleCenter(el)) => el.dispatchEvent(dragEvent(type, at, data));
   const wait = (el: Element, ms = 0) => (timing.followPointer ? pointerReaches(el, ms) : delay(ms));
 
   await wait(source, timing.grabMs);
@@ -59,14 +60,13 @@ export async function dragAndDrop(source: Element, target: Element, timing: Drag
 
   if (!accepted) fire(target, "dragleave");
   if (!dropped) data.dropEffect = "none";
-  fire(source, "dragend");
+  fire(source, "dragend", visibleCenter(target));
 
   return { dropped, refused: false };
 }
 
 /* A DragEvent where there is one (jsdom has none), carrying our transfer in place of the frozen native one. */
-function dragEvent(type: string, el: Element, dataTransfer: DataTransfer): Event {
-  const at = visibleCenter(el);
+function dragEvent(type: string, at: { x: number; y: number }, dataTransfer: DataTransfer): Event {
   const init = { bubbles: true, cancelable: true, composed: true, clientX: at.x, clientY: at.y };
   const event = typeof DragEvent === "function" ? new DragEvent(type, init) : new MouseEvent(type, init);
 

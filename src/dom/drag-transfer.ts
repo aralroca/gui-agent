@@ -71,8 +71,8 @@ function itemList(store: Map<string, string>) {
 /** The effect a browser proposes over a target, from what the source allows. */
 export function initialDropEffect(allowed: string): DataTransfer["dropEffect"] {
   if (allowed === "none") return "none";
-  if (allowed === "move" || allowed === "linkMove") return "move";
-  if (allowed === "link") return "link";
+  if (allowed === "move") return "move";
+  if (allowed === "link" || allowed === "linkMove") return "link";
 
   return "copy";
 }
