@@ -28,6 +28,11 @@ const INTERACTIVE_SELECTOR = [
   "[contenteditable=true]",
   "[contenteditable='']",
   "[tabindex]:not([tabindex='-1'])",
+  "[draggable=true]",
+  // Where a dragged element can be dropped: the page says so with
+  // aria-dropeffect, or with an inline ondrop handler.
+  "[aria-dropeffect]:not([aria-dropeffect=none])",
+  "[ondrop]",
 ].join(",");
 
 const HEADING_SELECTOR = "h1,h2,h3,h4,h5,h6,[role=heading]";
@@ -158,6 +163,7 @@ function roleOf(el: Element): string {
     return "textbox";
   }
   if (el.getAttribute("contenteditable") != null) return "textbox";
+  if (isDropTarget(el)) return "droptarget";
   return "control";
 }
 
@@ -224,9 +230,16 @@ function valueFlag(value: string): string {
   return `value=${preview} (${value.length} chars, preview truncated — the field kept all of it)`;
 }
 
+function isDropTarget(el: Element): boolean {
+  const effect = el.getAttribute("aria-dropeffect");
+
+  return (!!effect && effect !== "none") || el.hasAttribute("ondrop");
+}
+
 function stateOf(el: Element): string | undefined {
   const flags: string[] = [];
   if ((el as HTMLInputElement).disabled) flags.push("disabled");
+  if (el.getAttribute("draggable") === "true") flags.push("draggable");
   const tag = el.tagName.toLowerCase();
   if (tag === "input") {
     const input = el as HTMLInputElement;

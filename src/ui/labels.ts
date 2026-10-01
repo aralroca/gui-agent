@@ -7,6 +7,7 @@ export const DEFAULT_LABELS: Record<string, LabelValue> = {
   click: "Clicking",
   fill: "Typing",
   select_option: "Selecting",
+  drag: "Dragging",
   read_page: "Reading page",
   wait_for_text: "Waiting",
   navigate: "Navigating",

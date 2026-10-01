@@ -14,6 +14,7 @@
 import { defineTool, GuiAgent } from "@aralroca/gui-agent";
 import type { Llm } from "@aralroca/gui-agent";
 import { createAgentVisualizer } from "@aralroca/gui-agent/ui";
+import { BOARD_COLUMNS, mountBoard } from "./board";
 import { mountWorkflows, workflowStore } from "./workflows";
 
 // ---- mini console behavior ---------------------------------------------------
@@ -43,6 +44,13 @@ function selectTab(tab: string) {
 // Mount the React Flow canvas for the Workflows tab.
 mountWorkflows(document.getElementById("wf-canvas")!);
 
+// Mount the kanban for the Board tab; every drop (by hand or by the agent) says where the card went.
+mountBoard(document.getElementById("board")!, (title, column) => {
+  const toast = document.getElementById("board-toast")!;
+  toast.textContent = `Moved "${title}" to ${column}.`;
+  toast.style.display = "block";
+});
+
 document.querySelectorAll<HTMLButtonElement>("#tabs button").forEach((btn) =>
   btn.addEventListener("click", () => selectTab(btn.dataset.tab!)),
 );
@@ -63,7 +71,7 @@ renderUsers();
 defineTool({
   name: "go_to_tab",
   description: "Switch the console to a tab.",
-  inputSchema: { type: "object", properties: { tab: { type: "string", enum: ["users", "team", "profile", "workflows"] } }, required: ["tab"] },
+  inputSchema: { type: "object", properties: { tab: { type: "string", enum: ["users", "team", "profile", "workflows", "board"] } }, required: ["tab"] },
   annotations: { readOnlyHint: true },
   execute: ({ tab }) => {
     selectTab(String(tab));
@@ -161,6 +169,18 @@ function planFor(goal: string): { name: string; arguments: Record<string, unknow
     return [{ name: "add_workflow_step", arguments: { label: addStep[1]!.trim() } }];
   }
 
+  // DOM-fallback drag: the board exposes no tool, so the agent reads the page
+  // and drags the card onto its column (refs patched below, like the rename).
+  const move = goal.match(/(?:move|drag)\s+["“]?(.+?)["”]?\s+to\s+(todo|in progress|done)\b/i);
+  if (move) {
+    const column = BOARD_COLUMNS.find((name) => name.toLowerCase() === move[2]!.toLowerCase())!;
+    return [
+      { name: "go_to_tab", arguments: { tab: "board" } },
+      { name: "read_page", arguments: {} },
+      { name: "drag", arguments: { ref: `e?${move[1]!.trim()}`, to: `e?${column}` } },
+    ];
+  }
+
   const invite = goal.match(/([\w.+-]+@[\w-]+\.[\w.-]+)/);
   if (g.includes("invite") && invite) {
     const role = /admin/.test(g) ? "Admin" : /editor/.test(g) ? "Editor" : "Viewer";
@@ -184,6 +204,7 @@ function planFor(goal: string): { name: string; arguments: Record<string, unknow
   if (g.includes("profile")) return [{ name: "go_to_tab", arguments: { tab: "profile" } }];
   if (g.includes("team")) return [{ name: "go_to_tab", arguments: { tab: "team" } }];
   if (g.includes("workflow")) return [{ name: "go_to_tab", arguments: { tab: "workflows" } }];
+  if (g.includes("board")) return [{ name: "go_to_tab", arguments: { tab: "board" } }];
   return [];
 }
 
@@ -207,11 +228,25 @@ const viz = createAgentVisualizer({
   cursor: true,
 });
 
-// `demoLlm` emits a placeholder ref for the DOM-fallback rename; resolve it from
-// the live snapshot just before the call so the demo "just works".
+// The ref of the snapshot line that names `text` (a card's title, a column's name).
+function refNamed(req: Parameters<Llm>[0], text: string): string | undefined {
+  const lines = req.messages.flatMap((m) => m.content.split("\n"));
+  const line = lines.find((l) => l.toLowerCase().includes(`"${text.toLowerCase()}`));
+
+  return line?.match(/\[(e\d+)\]/)?.[1];
+}
+
+// `demoLlm` emits placeholder refs for the DOM-fallback rename and drag; resolve
+// them from the live snapshot just before the call so the demo "just works".
 const llm: Llm = async (req) => {
   const res = await demoLlm(req);
   for (const call of res.toolCalls ?? []) {
+    if (call.name === "drag") {
+      for (const key of ["ref", "to"]) {
+        const wanted = String(call.arguments[key]).slice(2);
+        call.arguments[key] = refNamed(req, wanted) ?? wanted;
+      }
+    }
     if (call.name === "fill" && call.arguments.ref === "e?") {
       const input = document.getElementById("display-name");
       const snapshotLine = req.messages.flatMap((m) => m.content.split("\n")).find((l) => l.includes("Display name"));
@@ -245,5 +280,5 @@ document.getElementById("ask")!.addEventListener("submit", async (e) => {
 
 add(
   "agent",
-  'Hi! Try: "invite jane@acme.com as admin", "search Kenji", "change my display name to Neo", or "build a workflow" (watch the glow follow each React Flow node).',
+  'Hi! Try: "invite jane@acme.com as admin", "search Kenji", "change my display name to Neo", "build a workflow" (watch the glow follow each React Flow node), or "move Fix login redirect to Done" (watch the pointer drag the card).',
 );

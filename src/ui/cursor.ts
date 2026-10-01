@@ -15,6 +15,7 @@
  * teleports, and CSS suppresses the ripple.
  */
 import { CURSOR_CSS } from "./styles.js";
+import { createCarrier } from "./ghost.js";
 import { createShadowHost } from "./host.js";
 
 export interface CursorOptions {
@@ -25,6 +26,8 @@ export interface CursorOptions {
 export interface Cursor {
   /** Travel to an element's center, rippling on arrival. */
   moveTo(el: Element): void;
+  /** Drag: the pointer's trip from `from` to `to` carries a copy of `from`. */
+  carry(from: Element, to: Element): void;
   /** Fade the pointer out — the tour ended. */
   hide(): void;
   dispose(): void;
@@ -60,6 +63,7 @@ export function createCursor(options: CursorOptions = {}): Cursor {
   let looping = false;
   let placed = false;
   let written = "";
+  const carrier = createCarrier();
 
   // jsdom (and exotic runtimes) may lack rAF; a 16ms timeout is close enough.
   const schedule = (cb: () => void) => {
@@ -106,6 +110,7 @@ export function createCursor(options: CursorOptions = {}): Cursor {
 
   const land = () => {
     traveling = false;
+    if (target) carrier.arrive(target);
     ping();
   };
 
@@ -117,6 +122,7 @@ export function createCursor(options: CursorOptions = {}): Cursor {
     if (next === written) return;
     written = next;
     el.style.transform = next;
+    carrier.follow(x, y);
   };
 
   // Interpolate from where the pointer set off toward the target's *live*
@@ -147,6 +153,7 @@ export function createCursor(options: CursorOptions = {}): Cursor {
   };
 
   const hide = () => {
+    carrier.letGo();
     looping = false;
     traveling = false;
     target = null;
@@ -177,10 +184,12 @@ export function createCursor(options: CursorOptions = {}): Cursor {
       if (typeof document === "undefined" || !el.isConnected) return;
       const shown = ensurePoint();
 
+      carrier.depart(el, x, y);
       beginTravel(el);
       shown.classList.add("on");
       startLoop();
     },
+    carry: carrier.carry,
     hide,
     dispose() {
       hide();

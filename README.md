@@ -96,7 +96,7 @@ Importing the package installs the WebMCP polyfill automatically — **no `<scri
 `gui-agent` unifies two approaches:
 
 1. **Producer (WebMCP).** Your app calls `defineTool(...)` to register reliable, structured actions on `document.modelContext`. Any WebMCP agent — including a browser's native one — can use them.
-2. **DOM fallback (page-agent style).** For anything not exposed, the agent builds a compact **text snapshot** of the page (roles, labels, values, stable refs like `e7`) and gets synthesized `read_page` / `click` / `fill` / `select_option` / `wait_for_text` tools. No screenshots, no multimodal model needed.
+2. **DOM fallback (page-agent style).** For anything not exposed, the agent builds a compact **text snapshot** of the page (roles, labels, values, stable refs like `e7`) and gets synthesized `read_page` / `click` / `fill` / `select_option` / `drag` / `wait_for_text` tools. No screenshots, no multimodal model needed.
 
 The built-in loop discovers all available tools, asks your LLM what to do, runs the calls (gated by your optional `confirm`), feeds results back, and repeats until done.
 
@@ -110,7 +110,7 @@ flowchart TD
     Loop --> Discover["🔍  Discover the available tools"]
     Discover --> Decide{"Is there a purpose-built<br/>WebMCP tool for this step?"}
     Decide -- "Yes · preferred" --> WebMCP["⚙️  Call the WebMCP tool<br/>structured &amp; reliable"]
-    Decide -- "No · fallback" --> DOM["🖱️  Infer from the DOM<br/>read_page → click / fill / select_option / wait_for_text"]
+    Decide -- "No · fallback" --> DOM["🖱️  Infer from the DOM<br/>read_page → click / fill / select_option / drag / wait_for_text"]
     WebMCP --> Gate{"Does the tool have<br/>readOnlyHint?"}
     DOM --> Gate
     Gate -- "No · write action" --> Confirm["🙋  Human-in-the-loop confirm()"]
@@ -163,6 +163,7 @@ In short: reach for **page-agent** to automate sites you *don't* own; reach for 
 | `discoverExternalTools()` | Read tools registered on `document.modelContext` by other code. |
 | `ensureModelContext()` / `hasModelContext()` | Polyfill bootstrap helpers. |
 | `DomSnapshotter` / `createDomTools()` | The DOM-fallback primitives, if you want them standalone. |
+| `dragAndDrop(source, target, timing?)` → `{ dropped, refused }` | Drag one element onto another by firing the page's HTML5 drag and drop events (`dragstart` → `dragenter` → `dragover` → `drop` → `dragend`, one shared `DataTransfer`). The page's own rules decide: a target that doesn't cancel `dragover` gets no `drop`. Pass `VISIBLE_DRAG` to pace it like the visualizer's pointer. |
 
 `GuiAgentOptions.domTools` forwards `DomToolsOptions` (`root`, `maxNodes`, `allowNavigation`, `onTarget`) to the per-run DOM tools. Just before each click/fill/select, the resolved live element is re-emitted on `onStep` as a `tool-target` step (carrying the originating `ToolCall`) — it's what powers the visualizer's glow.
 
@@ -224,6 +225,23 @@ viz.highlight(`.react-flow__node[data-id="${id}"]`); // …DOM node mounts a tic
 ```
 
 Set `cursor: true` to add a **simulated mouse pointer** on top of that tour: an arrow that travels to each target the ring visits and ripples where it lands, so the user sees *where* an action happened and not just that it did. It rides the same queue as the ring — including `viz.highlight()` calls from your own tools — follows the target if the page scrolls under it, and teleports without the ripple under `prefers-reduced-motion`. It is a drawn overlay, not the OS pointer: it does not fire `:hover` or real pointer events, and it never delays the action it illustrates.
+
+**Drag and drop.** The DOM fallback's `drag` tool (`{ ref, to }`) drags a `draggable="true"` element onto a drop target; the page outline flags draggable elements and lists drop targets — elements with `aria-dropeffect` (e.g. `aria-dropeffect="move"` on a board column) or an `ondrop` handler. With `cursor: true` the pointer lands on what is dragged and carries a copy of it to the target, where it lets go. Your own tools show the same with `viz.drag(from, to)` and perform it with `dragAndDrop(from, to, VISIBLE_DRAG)`:
+
+```ts
+defineTool({
+  name: "move_card",
+  description: "Move a card to another column.",
+  inputSchema: { type: "object", properties: { card: { type: "string" }, column: { type: "string" } }, required: ["card", "column"] },
+  execute: async ({ card, column }) => {
+    const from = document.getElementById(String(card))!;
+    const to = document.querySelector(`[aria-label="${column}"]`)!;
+    viz.drag(from, to);
+    const { dropped } = await dragAndDrop(from, to, VISIBLE_DRAG);
+    return dropped ? `Moved to ${column}.` : `${column} doesn't take that card.`;
+  },
+});
+```
 
 Known limitation: elements in the top layer (`<dialog showModal>`, fullscreen) paint above the overlay.
 
@@ -292,7 +310,7 @@ WebMCP tools run with the user's existing session/cookies, so a tool can do real
 npm run demo   # opens a mini "console" you can drive in natural language
 ```
 
-Try: *"invite jane@acme.com as admin"*, *"search Kenji"*, *"change my display name to Neo"* (the last one uses the DOM fallback — nothing is exposed for it), or *"build a workflow"* on the **Workflows** tab — a React Flow canvas where the glow follows each node as the agent adds it (selector highlighting, since the nodes mount asynchronously). The demo ships with the visualizer enabled by default, so you'll see the chips, the glow tour, and the backdrop veil exactly as in the GIF above.
+Try: *"invite jane@acme.com as admin"*, *"search Kenji"*, *"change my display name to Neo"* (the last one uses the DOM fallback — nothing is exposed for it), *"move Fix login redirect to Done"* on the **Board** tab (a plain HTML5 drag and drop kanban: the agent drags the card with the DOM fallback's `drag` tool and the pointer carries it to its column), or *"build a workflow"* on the **Workflows** tab — a React Flow canvas where the glow follows each node as the agent adds it (selector highlighting, since the nodes mount asynchronously). The demo ships with the visualizer enabled by default, so you'll see the chips, the glow tour, and the backdrop veil exactly as in the GIF above.
 
 ## Develop
 

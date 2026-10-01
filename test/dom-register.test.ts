@@ -4,7 +4,7 @@ import { ToolRegistry } from "../src/registry.js";
 import { envelopeToText } from "../src/result.js";
 import type { DomTargetEvent } from "../src/types.js";
 
-const DOM_TOOLS = ["read_page", "click", "fill", "select_option", "wait_for_text"];
+const DOM_TOOLS = ["read_page", "click", "fill", "select_option", "drag", "wait_for_text"];
 
 describe("registerDomTools", () => {
   let registry: ToolRegistry;
@@ -35,12 +35,12 @@ describe("registerDomTools", () => {
   it("unregisters everything when the signal aborts (and via the returned dispose)", () => {
     const controller = new AbortController();
     registerDomTools({ registry, skipModelContext: true, signal: controller.signal });
-    expect(registry.list()).toHaveLength(5);
+    expect(registry.list()).toHaveLength(DOM_TOOLS.length);
     controller.abort();
     expect(registry.list()).toHaveLength(0);
 
     const dispose = registerDomTools({ registry, skipModelContext: true });
-    expect(registry.list()).toHaveLength(5);
+    expect(registry.list()).toHaveLength(DOM_TOOLS.length);
     dispose();
     expect(registry.list()).toHaveLength(0);
   });
@@ -48,7 +48,7 @@ describe("registerDomTools", () => {
   it("replaces stale registrations instead of throwing (double-mount safety)", () => {
     registerDomTools({ registry, skipModelContext: true });
     expect(() => registerDomTools({ registry, skipModelContext: true })).not.toThrow();
-    expect(registry.list()).toHaveLength(5);
+    expect(registry.list()).toHaveLength(DOM_TOOLS.length);
   });
 
   it("a stale ref error carries a fresh snapshot so the model can re-orient", async () => {
