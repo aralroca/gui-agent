@@ -15,6 +15,15 @@
   <a href="https://webmachinelearning.github.io/webmcp/"><img src="https://img.shields.io/badge/WebMCP-standard-6d28d9" alt="WebMCP" /></a>
   <img src="https://img.shields.io/badge/TypeScript-first-3178c6?logo=typescript&logoColor=white" alt="TypeScript" />
   <a href="./LICENSE"><img src="https://img.shields.io/npm/l/%40aralroca%2Fgui-agent" alt="MIT license" /></a>
+  <a href="https://github.com/aralroca/gui-agent/stargazers"><img src="https://img.shields.io/github/stars/aralroca/gui-agent?style=flat&logo=github" alt="GitHub stars" /></a>
+</p>
+
+<p align="center">
+  <a href="#quick-start"><strong>Quick start</strong></a> ·
+  <a href="#demo"><strong>Demo</strong></a> ·
+  <a href="#api"><strong>API</strong></a> ·
+  <a href="#compared-to-page-agent"><strong>vs page-agent</strong></a> ·
+  <a href="https://github.com/sponsors/aralroca"><strong>Sponsor</strong></a>
 </p>
 
 <p align="center">
@@ -36,6 +45,8 @@ Inspired by [page-agent](https://github.com/alibaba/page-agent), but built on th
 
 > ⚠️ Early/experimental. WebMCP is a moving [W3C draft](https://webmachinelearning.github.io/webmcp/); APIs may change.
 
+> ⭐ If gui-agent is useful to you, [starring the repo](https://github.com/aralroca/gui-agent/stargazers) helps other developers find it.
+
 _Thinking is cheap. But what if your agents didn't have to think so much—and instead had **TOTAL CONTROL** of your app (**AUTOMATICALLY**)? Take a look **[Janux Framework](https://github.com/aralroca/Janux)** for more than gui-agent lib_
 
 
@@ -55,6 +66,7 @@ _Thinking is cheap. But what if your agents didn't have to think so much—and i
 - [Safety](#safety)
 - [Demo](#demo)
 - [Develop](#develop)
+- [Support the project](#support-the-project)
 - [License](#license)
 
 ## Install
@@ -320,6 +332,23 @@ npm test          # vitest + jsdom
 npm run build     # tsup → ESM + .d.ts for all entry points
 npm run typecheck
 ```
+
+Issues and pull requests are welcome — [open one](https://github.com/aralroca/gui-agent/issues) for bugs, ideas, or questions.
+
+## Support the project
+
+gui-agent is MIT-licensed and maintained in the open. If it saves you time:
+
+- ⭐ [Star the repo](https://github.com/aralroca/gui-agent/stargazers) so more developers can discover it.
+- 💜 [Sponsor on GitHub](https://github.com/sponsors/aralroca) to keep development going.
+- 📣 Share what you built with it — demos and write-ups are the best way to spread the word.
+
+<a href="https://star-history.com/#aralroca/gui-agent&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=aralroca/gui-agent&type=Date&theme=dark" />
+    <img src="https://api.star-history.com/svg?repos=aralroca/gui-agent&type=Date" alt="Star history chart" width="600" />
+  </picture>
+</a>
 
 ## License
 
